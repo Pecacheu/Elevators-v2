@@ -1,0 +1,18 @@
+main: com.pecacheu.elevators.Main
+name: Elevators_v2
+version: 2.7.6
+author: Pecacheu
+description: Adds Working Elevators to Minecraft!
+commands:
+  elev:
+    description: Reload The Plugin.
+    usage: /elev reload
+    permission: elevators.reload
+    permission-message: You don't have permission to do that!
+permissions:
+  elevators.use:
+    default: true
+  elevators.create:
+    default: op
+  elevators.reload:
+    default: op
