@@ -16,6 +16,7 @@ import org.bukkit.block.BlockState;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Vector;
 
 public class Elevator {
 	public Floor floor;
@@ -131,11 +132,12 @@ public class Elevator {
 	
 	//Get elevator for player, if any.
 	public static Elevator fromPlayer(Player pl) {
-		World pW = pl.getWorld(); int pX = (int)pl.getLocation().getX(), pZ = (int)pl.getLocation().getZ();
+		World pW = pl.getWorld(); int pX = (int)pl.getLocation().getX(), pY = (int)pl.getLocation().getY(), pZ = (int)pl.getLocation().getZ();
 		Object[] eKeys = Conf.elevators.keySet().toArray();
 		for(int s=0,v=eKeys.length; s<v; s++) { //Iterate through elevators:
 			Elevator elev = Conf.elevators.get(eKeys[s]); Floor fl = elev.floor;
-			if(fl.world.equals(pW) && (pX >= fl.xMin && pX <= fl.xMax) && (pZ >= fl.zMin && pZ <= fl.zMax)) return elev;
+			if(fl.world.equals(pW) && (pX >= fl.xMin && pX <= fl.xMax) && (pY >= elev.yMin
+			()-1 && pY < elev.yMax()+1) && (pZ >= fl.zMin && pZ <= fl.zMax)) return elev;
 		} Conf.err("fromPlayer", "Elevator not detected for player: "+pl.getName()); return null;
 	}
 	
@@ -230,16 +232,22 @@ public class Elevator {
 		}
 	}
 	
-	//Turn on/off gravity and change height of all entities in elevator:
-	public void setEntities(boolean gravity, double h) {
+	//Turn on/off gravity and adjust height of all entities in elevator:
+	public void setEntities(boolean gravity, double delta, double hCheck) {
 		World world = floor.world; int yMin = this.yMin(), yMax = this.yMax();
 		Object[] eList = world.getEntitiesByClass(org.bukkit.entity.LivingEntity.class).toArray(); //Get LivingEntity list.
 		for(int i=0,l=eList.length; i<l; i++) { //Iterate through entities:
-			Location loc = ((Entity)eList[i]).getLocation(); double eX = loc.getX(), eY = loc.getY(), eZ = loc.getZ();
-			if((eX >= floor.xMin && eX < floor.xMax+1) && (eY >= yMin && eY < yMax+1) && (eZ >= floor.zMin && eZ < floor.zMax+1)) {
-			((Entity)eList[i]).setGravity(gravity); if(h!=0) ((Entity)eList[i]).teleport(new Location(world, eX, h+1.1, eZ, loc.getYaw(), loc.getPitch())); }
+			Entity e = (Entity)eList[i]; Location loc = e.getLocation(); double eX = loc.getX(), eY = loc.getY(), eZ = loc.getZ();
+			if((eX >= floor.xMin && eX < floor.xMax+1) && (eY >= yMin-1 && eY < yMax+1) && (eZ >= floor.zMin && eZ < floor.zMax+1)) {
+				e.setGravity(gravity); if(hCheck != 0) {
+					e.setVelocity(new Vector(0, delta, 0));
+					if(delta == 0 || Math.abs(eY-(hCheck+1)) > 5) e.teleport(new
+					Location(world, eX, hCheck+1.1, eZ, loc.getYaw(), loc.getPitch()));
+				}
+			}
 		}
-	} public void setEntities(boolean gravity) { setEntities(gravity, 0); }
+	} public void setEntities(boolean gravity, double hSet) { setEntities(gravity, 0, hSet); }
+	public void setEntities(boolean gravity) { setEntities(gravity, 0, 0); }
 	
 	//-- Elevator Movement:
 	
@@ -257,23 +265,23 @@ public class Elevator {
 		
 		Conf.plugin.setTimeout(() -> {
 			int fID = floor.addFloor(fLevel, true); GotoTimer timer = new GotoTimer();
-			timer.set(this, fLevel, sLevel, selNum, step, fID); Conf.plugin.setInterval(timer, Conf.MOVE_RES);
+			timer.set(this, fLevel, sLevel, selNum, speed, step, fID); Conf.plugin.setInterval(timer, Conf.MOVE_RES);
 		}, 500);
 	}
 }
 
 class GotoTimer extends BukkitRunnable {
 	private Main plugin = Conf.plugin; private Elevator elev;
-	private int fLevel, sLevel, selNum, fID; private double fPos, step; private byte mFlr = 3;
+	private int sLevel, selNum, fID; private double fPos, step, accel;
 	
-	public void set(Elevator elev, int fLevel, int sLevel, int selNum, double step, int fID) {
-		this.elev = elev; this.step = step; this.fPos = fLevel; this.fLevel = fLevel;
-		this.sLevel = sLevel; this.selNum = selNum; this.fID = fID;
+	public void set(Elevator elev, int fLevel, int sLevel, int selNum, double speed, double step, int fID) {
+		this.elev = elev; this.step = step; this.fPos = fLevel; this.sLevel = sLevel; this.selNum = selNum;
+		this.fID = fID; this.accel = speed*(elev.moveDir?1:-1)/21; elev.setEntities(false, fPos);
 	}
 	
 	public void run() { synchronized(Conf.API_SYNC) {
-		if(mFlr >= 3) { elev.floor.moveFloor(fID, fPos); elev.updateCallSigns(fPos,
-		elev.moveDir?1:0, selNum); mFlr = 0; } mFlr++; elev.setEntities(false, fPos);
+		elev.floor.moveFloor(fID, fPos); elev.updateCallSigns(fPos, elev.moveDir?1:0, selNum); elev.setEntities(false, accel, fPos);
+		
 		if(elev.moveDir?(fPos >= sLevel):(fPos <= sLevel)) { //At destination floor:
 			this.cancel(); elev.floor.deleteFloor(fID); elev.floor.addFloor(sLevel, false); //Restore solid floor.
 			plugin.setTimeout(() -> { elev.floor.addFloor(sLevel, false); elev.setEntities(true, sLevel); }, 50); //Set floor again, just to be sure.

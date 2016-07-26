@@ -39,12 +39,10 @@ public class Main extends JavaPlugin implements Listener {
 	public void onEnable() {
 		Conf.initDefaults(this);
 		//Config Auto-save Timer:
-		setTimeout(() -> { synchronized(Conf.API_SYNC) {
-			String err = Conf.loadConfig(); if(err=="1") Conf.saveConfig();
-			else if(err!=null) Bukkit.getServer().getConsoleSender().sendMessage(Conf.MSG_ERR_CONF+"\n"+err);
-			else Conf.saveConfig();
+		setTimeout(() -> {
+			Conf.doConfigLoad();
 			svTmr = setInterval(() -> { Conf.saveConfig(); }, Conf.SAVE_INT*60000);
-		}}, 200);
+		}, 200);
 		getServer().getPluginManager().registerEvents(this, this);
 	}
 	
@@ -58,14 +56,7 @@ public class Main extends JavaPlugin implements Listener {
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 		if(command.getName().equalsIgnoreCase("elev")) {
 			if(args.length == 1 && args[0].equalsIgnoreCase("reload")) {
-				setTimeout(() -> { synchronized(Conf.API_SYNC) {
-					String err = Conf.loadConfig(); if(err=="1") { if(sender instanceof
-					Player) sender.sendMessage(Conf.MSG_NEW_CONF); Conf.saveConfig(); }
-					else if(err!=null) { Bukkit.getServer().getConsoleSender().sendMessage(Conf.MSG_ERR_CONF+"\n"+err);
-					if(sender instanceof Player) sender.sendMessage(Conf.MSG_ERR_CONF); }
-					else Conf.saveConfig();
-					sender.sendMessage("§aElevators Plugin Reloaded!");
-				}}, 200);
+				setTimeout(() -> { Conf.doConfigLoad(sender); }, 200);
 			} else sender.sendMessage("§cUsage: /elev reload");
 			return true;
 		}

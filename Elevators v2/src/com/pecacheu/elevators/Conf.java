@@ -22,6 +22,7 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.MemoryConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -47,6 +48,8 @@ public class Conf {
 	public static final String MSG_DBG = "§e[Elevators] §r";
 	public static final String MSG_ERR_ST = "§e[Elevators] §eError in §b";
 	public static final String MSG_ERR_MID = "§e: §c";
+	public static final String MSG_DEL_ST = "§e[Elevators] §b";
+	public static final String MSG_DEL_END = " §esaved elevators were deleted because they were invalid!";
 	public static final String CONFIG_PATH = "plugins/Elevators/config.yml";
 	public static final Material AIR = Material.AIR;
 	
@@ -116,7 +119,7 @@ public class Conf {
 		return unpackFile("config.yml", file);
 	}
 	
-	public static String loadConfig() { try {
+	public static Object loadConfig() { try {
 		File path = new File(CONFIG_PATH); YamlConfiguration config; boolean pathFound = path.exists();
 		if(pathFound) config = YamlConfiguration.loadConfiguration(path); else config = new YamlConfiguration();
 		
@@ -165,13 +168,29 @@ public class Conf {
 		}
 		
 		//Load Compressed Elevator Data:
-		elevators.clear(); ConfigurationSection eList = config.getConfigurationSection("elevators");
+		elevators.clear(); ConfigurationSection eList = config.getConfigurationSection("elevators"); Integer eCnt = 0;
 		if(eList != null) { Object[] eKeys = eList.getKeys(false).toArray(); for(int i=0,l=eKeys.length; i<l; i++) {
 			Elevator elev = Elevator.fromSaveData(eList.getStringList((String)eKeys[i]));
-			if(elev != null) elevators.put((String)eKeys[i], elev); else err("loadConfig", "fromSaveData returned null at ID "+eKeys[i]);
+			if(elev != null) elevators.put((String)eKeys[i], elev); else { eCnt++; err("loadConfig", "fromSaveData returned null at ID "+eKeys[i]); }
 		}}
-		return pathFound?null:"1";
+		return pathFound?eCnt:"NOPATH";
 	} catch(Exception e) { err("loadConfig", "Caught Exception: "+e.getMessage()); return e.getMessage(); }}
+	
+	public static void doConfigLoad(CommandSender sender) {
+		Object err = loadConfig();
+		if(err == "NOCONF") saveConfig(); //Create New Config.
+		else if(err instanceof Integer) { //Loaded Config Successfully.
+			if((Integer)err > 0) {
+				String delMsg = MSG_DEL_ST+(Integer)err+MSG_DEL_END;
+				Bukkit.getServer().getConsoleSender().sendMessage(delMsg);
+				if(sender instanceof Player) sender.sendMessage(delMsg);
+			} saveConfig();
+		} else if(err!=null) { //Error While Loading Config.
+			Bukkit.getServer().getConsoleSender().sendMessage(MSG_ERR_CONF+"\n"+err);
+			if(sender instanceof Player) sender.sendMessage(MSG_ERR_CONF);
+		}
+		if(sender != null) sender.sendMessage("§aElevators Plugin Reloaded!");
+	} public static void doConfigLoad() { doConfigLoad(null); }
 	
 	//-------------------  Useful Functions -------------------
 	

@@ -26,7 +26,7 @@ callDown: '&3\u25BC  \u25BC  \u25BC  \u25BC  \u25BC  \u25BC'
 down:     '&4\u25BD  \u25BD  \u25BD  \u25BD  \u25BD  \u25BD'
 
 floorMaxRadius: 8  # Maximum floor size, in each direction from sign.
-updateDelay: 50    # Delay between updates while moving. Increase to reduce lag.
+updateDelay: 150   # Delay between updates while moving. Increase to reduce lag.
 doorHoldTime: 4000 # Timeout before elevator doors are closed.
 saveInterval: 15   # Auto-save frequency in minutes.
 
