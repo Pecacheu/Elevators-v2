@@ -41,7 +41,6 @@ public class Elevator {
 		for(int i=1,l=data.size(); i<l; i+=2) {
 			int sX, sZ; try { sX = Integer.parseInt(data.get(i)); sZ = Integer.parseInt(data.get(i+1)); } catch
 			(NumberFormatException e) { Conf.err("fromSaveData", "Cannot convert position data to integer."); return null; }
-			if(sX < 0 || sZ < 0) { Conf.err("fromSaveData", "X,Z coords cannot be less than 0!"); return null; }
 			ChuList<Block> sList = Elevator.rebuildSignList(w, sX, sZ);
 			if(sList.length!=0) sGroups.push(sList);
 		}
@@ -132,12 +131,13 @@ public class Elevator {
 	
 	//Get elevator for player, if any.
 	public static Elevator fromPlayer(Player pl) {
-		World pW = pl.getWorld(); int pX = (int)pl.getLocation().getX(), pY = (int)pl.getLocation().getY(), pZ = (int)pl.getLocation().getZ();
+		World pW = pl.getWorld(); Location loc = pl.getLocation();
+		double pX = loc.getX(), pY = loc.getY(), pZ = loc.getZ();
 		Object[] eKeys = Conf.elevators.keySet().toArray();
 		for(int s=0,v=eKeys.length; s<v; s++) { //Iterate through elevators:
 			Elevator elev = Conf.elevators.get(eKeys[s]); Floor fl = elev.floor;
-			if(fl.world.equals(pW) && (pX >= fl.xMin && pX <= fl.xMax) && (pY >= elev.yMin
-			()-1 && pY < elev.yMax()+1) && (pZ >= fl.zMin && pZ <= fl.zMax)) return elev;
+			if(fl.world.equals(pW) && (pX >= fl.xMin && pX < fl.xMax+1) && (pY >= elev.yMin
+			()-1 && pY < elev.yMax()+1) && (pZ >= fl.zMin && pZ < fl.zMax+1)) return elev;
 		} Conf.err("fromPlayer", "Elevator not detected for player: "+pl.getName()); return null;
 	}
 	
@@ -193,7 +193,7 @@ public class Elevator {
 		World world = floor.world;
 		for(int y=yMin; y<yMax; y++) for(int x=floor.xMin; x<floor.xMax+1; x++) for(int z=floor.zMin; z<floor.zMax+1; z++) {
 			Block bl = world.getBlockAt(x, y, z); if(y == yMin && !noFloor) bl.setType(floor.fType);
-			else if(bl.getType() != Material.WALL_SIGN || !isKnownSign(bl))
+			else if(bl.getType() != Material.WALL_SIGN || (Conf.TITLE.equals(Conf.lines(bl)[0]) && !isKnownSign(bl))) //TODO Check if it works.
 			{BlockState s=bl.getState();s.setType(Conf.AIR);s.update(true);}
 		}
 	} public void resetElevator() { resetElevator(false); }
@@ -240,9 +240,8 @@ public class Elevator {
 			Entity e = (Entity)eList[i]; Location loc = e.getLocation(); double eX = loc.getX(), eY = loc.getY(), eZ = loc.getZ();
 			if((eX >= floor.xMin && eX < floor.xMax+1) && (eY >= yMin-1 && eY < yMax+1) && (eZ >= floor.zMin && eZ < floor.zMax+1)) {
 				e.setGravity(gravity); if(hCheck != 0) {
-					e.setVelocity(new Vector(0, delta, 0));
-					if(delta == 0 || Math.abs(eY-(hCheck+1)) > 5) e.teleport(new
-					Location(world, eX, hCheck+1.1, eZ, loc.getYaw(), loc.getPitch()));
+					e.setVelocity(new Vector(0, delta, 0)); if(delta == 0 || Math.abs(eY-(hCheck+1)) > 5)
+					e.teleport(new Location(world, eX, hCheck+1.1, eZ, loc.getYaw(), loc.getPitch()));
 				}
 			}
 		}

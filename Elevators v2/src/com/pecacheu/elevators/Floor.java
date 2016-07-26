@@ -31,8 +31,8 @@ public class Floor {
 		if(face != "SOUTH") while(zN <= Conf.RADIUS_MAX) { if(world.getBlockAt(bX, h, bZ-zN).getType() != fType) break; zN++; }
 		
 		if(xP > Conf.RADIUS_MAX || xN > Conf.RADIUS_MAX || zP > Conf.RADIUS_MAX || zN > Conf.RADIUS_MAX) { Conf.err("getFloor", "Maximum floor size exceeded!"); return null; }
-		int xPos=bX-xN+1, zPos=bZ-zN+1, length=xP+xN-1, width=zP+zN-1; //TODO Streamline math.
-		return new Floor(world, xPos, zPos, xPos+length-1, zPos+width-1, fType, false, parent);
+		int xPos=bX-xN+1, zPos=bZ-zN+1, xMax = bX+xP-1, zMax = bZ+zP-1;
+		return new Floor(world, xPos, zPos, xMax, zMax, fType, false, parent);
 	}
 	
 	//-- Floor Management Functions:

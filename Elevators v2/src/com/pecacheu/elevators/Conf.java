@@ -347,8 +347,8 @@ public class Conf {
 	}
 	
 	public static Block getBlockBelowPlayer(Player p, boolean above) {
-		Location loc = p.getLocation(); int pX = (int)loc.getX(), pZ = (int)loc.getZ(); double pY = loc
-		.getY(); return p.getWorld().getBlockAt(pX, (int)(above?Math.ceil(pY+1.99):Math.floor(pY-1)), pZ);
+		Location loc = p.getLocation(); int pX = (int)Math.floor(loc.getX()), pZ = (int)Math.floor(loc.getZ());
+		double pY = loc.getY(); return p.getWorld().getBlockAt(pX, (int)(above?Math.ceil(pY+1.99):Math.floor(pY-1)), pZ);
 	} public static Block getBlockBelowPlayer(Player p) { return getBlockBelowPlayer(p, false); }
 }
 

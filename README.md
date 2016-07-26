@@ -11,8 +11,15 @@ Plus, there's an API, which I'm already taking advantage of in another plugin, w
 ### Reload Behavior
 The only info the plugin stores is the X and Z location of each elevator, under it's unique eID. All elev signs, call signs, floor size and current level, and other data is recalculated on plugin reload. Invalid elevators are automaticaly deleted from the config, and elevators not in the config do not work (which prevents those without the permission node from creating elevators).
 
+### Permissions
+- **elevators.use** Change levels, operate elevators. Default: All Players.
+- **elevators.create** Create and destroy elevators and call signs.
+- **elevators.reload** Reload plugin (`/elev reload`), recieve debugging info.
+
 ### Development
 Anyway, this plugin took WEEKS to develop, but the inital development went prety fast, as I prototyped the plugin in ScriptCraft first, but when I tried to port it to Java, I found that it was a bit harder than I thought! (You can find both the JS version and the port [here](https://github.com/Pecacheu/Elevators).) So with Elevators v2, I just started over, using similar code, but taking advantage of Java's more object-oriented nature. You can find the v2 source [here](https://github.com/Pecacheu/Elevators-v2). The license is GNU-GPL.
+
+Find the plugin on [BukkitDev](http://dev.bukkit.org/bukkit-plugins/elevators-v2)!
 
 Also, a video tutorial should be coming soon!
 
