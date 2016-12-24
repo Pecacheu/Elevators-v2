@@ -141,6 +141,20 @@ public class Elevator {
 		} Conf.err("fromPlayer", "Elevator not detected for player: "+pl.getName()); return null;
 	}
 	
+	//Get elevator nearby door, if any.
+	public static Elevator fromDoor(Location loc) {
+		int x = loc.getBlockX(), z = loc.getBlockZ();
+		Object[] eKeys = Conf.elevators.keySet().toArray();
+		for(int s=0,v=eKeys.length; s<v; s++) { //Iterate through elevators:
+			Elevator elev = Conf.elevators.get(eKeys[s]); Floor fl = elev.floor; if(!fl.world.equals(loc.getWorld())) continue;
+			//Scan perimeter for door:
+			if(z == fl.zMin-1) for(int xP=fl.xMin; xP<fl.xMax+2; xP++) { if(x == xP) return elev; }
+			if(x == fl.xMax+1) for(int zP=fl.zMin; zP<fl.zMax+2; zP++) { if(z == zP) return elev; }
+			if(z == fl.zMax+1) for(int xP=fl.xMin; xP<fl.xMax+2; xP++) { if(x == xP) return elev; }
+			if(x == fl.xMin-1) for(int zP=fl.zMin; zP<fl.zMax+2; zP++) { if(z == zP) return elev; }
+		} Conf.err("fromDoor", "Elevator not detected for door at: "+loc); return null;
+	}
+	
 	//-- Elevator Movement Functions:
 	
 	//Calculates current floor height.

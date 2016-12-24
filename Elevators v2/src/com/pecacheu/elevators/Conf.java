@@ -210,14 +210,16 @@ public class Conf {
 		|| (t.length()>11 && t.substring(t.length()-11).equals("_DOOR_BLOCK"))) && b.getData() < 8;
 	}
 	
+	//Check if block is wooden door or top of wooden door:
+	public static boolean isWoodDoor(Block b) {
+		String t = b.getType().toString(); return t.endsWith("_DOOR");
+	}
+	
 	//Set redstone power-state of powerable blocks:
 	public static void setPowered(Block block, boolean onOff) {
 		switch(block.getType()) {
 			case REDSTONE_WIRE:
-			//if(onOff) block.setData((byte)(block.getData() | 0x8)); //Direct Byte-Code Modification.
-			//else block.setData((byte)(block.getData() & ~(byte)0x8)); //TODO Is this correct?
-			if(onOff) block.setData((byte)15); else block.setData((byte)0);
-			//block.getState().update();
+			//if(onOff) block.setData((byte)15); else block.setData((byte)0);
 			break; case LEVER:
 			BlockState stL = block.getState(); ((org.bukkit.material
 			.Lever)stL.getData()).setPowered(onOff); stL.update();

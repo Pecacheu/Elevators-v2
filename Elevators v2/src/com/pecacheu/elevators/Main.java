@@ -8,14 +8,12 @@ package com.pecacheu.elevators;
 //TODO Always Check TODOs Regularly!
 //TODO NODOOR setting for individual levels?
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
@@ -129,10 +127,6 @@ public class Main extends JavaPlugin implements Listener {
 				Floor fl = Floor.getFloor(block, null); if(fl==null) { event.setLine(0, Conf.ERROR); Conf.err("onSignChange:ElevSign:NewElev", "Floor not found!"); return; }
 				String eID = Conf.locToString(new Location(fl.world, fl.xMin, 0, fl.zMin));
 				elev = new Elevator(fl, null, null); fl.elev = elev; ind = -1;
-				//Special Modes:
-				if(event.getLine(2).equalsIgnoreCase("[nodoor]"))
-				{ elev.noDoor = true; event.setLine(2, Conf.NODOOR); } //Enable NoDoor Mode.
-				else event.setLine(2, "");
 				Conf.elevators.put(eID, elev);
 			}
 			
@@ -143,7 +137,14 @@ public class Main extends JavaPlugin implements Listener {
 			}
 			
 			//Update Elevator Data:
-			if(ind == -1) { elev.sGroups = new ChuList<ChuList<Block>>(sList);  } else elev.sGroups.set(ind, sList);
+			if(ind == -1) { elev.sGroups = new ChuList<ChuList<Block>>(sList); } else elev.sGroups.set(ind, sList);
+			
+			//Special Modes:
+			if(event.getLine(2).equalsIgnoreCase("[nodoor]")) { //Enable NoDoor Mode:
+				elev.noDoor = true; Block first = elev.sGroups.get(0).get(0);
+				if(first.equals(event.getBlock())) event.setLine(2, Conf.NODOOR);
+				else { Conf.setLine(first, 2, Conf.NODOOR); event.setLine(2, ""); }
+			} else event.setLine(2, "");
 			
 			//Update Sign Level Numbers for Non-Custom-Named Signs:
 			for(int k=0,m=elev.sGroups.length; k<m; k++) for(int f=0,d=elev.sGroups.get(k).length; f<d; f++) {
@@ -217,14 +218,15 @@ public class Main extends JavaPlugin implements Listener {
 	//------------------- Elevator Block-Clicking Events -------------------
 	
 	@EventHandler(priority = EventPriority.NORMAL)
-	public void onPlayerInteract(PlayerInteractEvent event) { synchronized(Conf.API_SYNC) { if(!Conf.DISABLED&&event.getItem()==null) { ConfData ref = new ConfData();
+	public void onPlayerInteract(PlayerInteractEvent event) { synchronized(Conf.API_SYNC) { if(!Conf.DISABLED) { ConfData ref = new ConfData();
 		Action act = event.getAction(); if(act == Action.RIGHT_CLICK_BLOCK && !event.isCancelled() && event.getClickedBlock().getType() == Material.WALL_SIGN) {
 		if(Conf.isElevSign(event.getClickedBlock(), ref, event.getPlayer(), PERM_USE) && !((Elevator)ref.data).floor.moving) { //Select Floor:
 			Elevator elev = ((Elevator)ref.data); ChuList<Block> dsList = elev.sGroups.get(0);
 			
 			//Get Selected Floor:
 			String selName = Conf.lines(dsList.get(0))[1]; int selNum = 0; if(selName.length()!=0)
-			selName = selName.substring(Conf.L_ST.length(),selName.length()-Conf.L_END.length());
+			selName = selName.substring(Conf.L_ST.length()-(selName.charAt(Conf.L_ST.length()-1)
+			!=Conf.L_ST.charAt(Conf.L_ST.length()-1)?2:0),selName.length()-Conf.L_END.length());
 			
 			//Get List of Floor Names:
 			ChuList<String> flNames = new ChuList<String>();
@@ -235,6 +237,7 @@ public class Main extends JavaPlugin implements Listener {
 			if(event.getPlayer().isSneaking()) { selNum--; if(selNum < 0) selNum = flNames.length-1; } else
 			{ selNum++; if(selNum >= flNames.length) selNum = 0; } elev.updateFloorName(flNames.get(selNum));
 			
+			event.setCancelled(true);
 		} else if(Conf.isCallSign(event.getClickedBlock(), ref, event.getPlayer(), PERM_USE) && !((CSData)ref.data).elev.floor.moving) { //Call Sign Click:
 			Elevator elev = ((CSData)ref.data).elev; int fLevel = elev.getLevel(), sLevel = event.getClickedBlock().getY()-2;
 			
@@ -245,13 +248,14 @@ public class Main extends JavaPlugin implements Listener {
 				elev.gotoFloor(fLevel, sLevel, ((CSData)ref.data).index, speed);
 			} else elev.doorTimer(sLevel+2); //Re-open doors if already on level.
 			
-		}} else if((/*act == Action.LEFT_CLICK_AIR ||*/ act == Action.RIGHT_CLICK_BLOCK) //TODO Should LEFT_CLICK_AIR really be included?
-		&& Conf.isElevPlayer(event.getPlayer(), ref, PERM_USE) && !((Elevator)ref.data).floor.moving) { //Go To Floor:
+			event.setCancelled(true);
+		}} else if(act == Action.RIGHT_CLICK_BLOCK && Conf.isElevPlayer(event.getPlayer(), ref, PERM_USE) && !((Elevator)ref.data).floor.moving) { //Go To Floor:
 			Elevator elev = ((Elevator)ref.data); ChuList<Block> dsList = elev.sGroups.get(0);
 			
 			//Get Current And Selected Floors:
 			int fLevel = elev.getLevel(), selNum = 0; String selName = Conf.lines(dsList.get(0))[1];
-			if(selName.length()!=0) selName = selName.substring(Conf.L_ST.length(),selName.length()-Conf.L_END.length());
+			if(selName.length()!=0) selName = selName.substring(Conf.L_ST.length()-(selName.charAt(Conf.L_ST
+			.length()-1)!=Conf.L_ST.charAt(Conf.L_ST.length()-1)?2:0),selName.length()-Conf.L_END.length());
 			
 			//Get Floor Name:
 			for(int i=0,l=dsList.length; i<l; i++) if(selName.equals(Conf.lines(dsList.get(i))[3])) selNum = i;
@@ -263,6 +267,11 @@ public class Main extends JavaPlugin implements Listener {
 				int speed = Conf.BL_SPEED.get(Conf.BLOCKS.indexOf(elev.floor.fType.toString()));
 				elev.gotoFloor(fLevel, sLevel, selNum, speed);
 			} else elev.doorTimer(sLevel+2); //Re-open doors if already on level.
+			
+			event.setCancelled(true);
+		} else if(act == Action.RIGHT_CLICK_BLOCK && Conf.isWoodDoor(event.getClickedBlock())) {
+			Elevator elev = Elevator.fromDoor(event.getClickedBlock().getLocation());
+			if(elev != null) event.setCancelled(true); //Cancel right-clicks on wooden elevator doors.
 		}
 	}}}
 }
