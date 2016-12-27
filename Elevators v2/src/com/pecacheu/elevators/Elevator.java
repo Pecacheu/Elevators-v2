@@ -138,7 +138,7 @@ public class Elevator {
 			Elevator elev = Conf.elevators.get(eKeys[s]); Floor fl = elev.floor;
 			if(fl.world.equals(pW) && (pX >= fl.xMin && pX < fl.xMax+1) && (pY >= elev.yMin
 			()-1 && pY < elev.yMax()+1) && (pZ >= fl.zMin && pZ < fl.zMax+1)) return elev;
-		} Conf.err("fromPlayer", "Elevator not detected for player: "+pl.getName()); return null;
+		} /*Conf.err("fromPlayer", "Elevator not detected for player: "+pl.getName());*/ return null;
 	}
 	
 	//Get elevator nearby door, if any.
@@ -152,7 +152,7 @@ public class Elevator {
 			if(x == fl.xMax+1) for(int zP=fl.zMin; zP<fl.zMax+2; zP++) { if(z == zP) return elev; }
 			if(z == fl.zMax+1) for(int xP=fl.xMin; xP<fl.xMax+2; xP++) { if(x == xP) return elev; }
 			if(x == fl.xMin-1) for(int zP=fl.zMin; zP<fl.zMax+2; zP++) { if(z == zP) return elev; }
-		} Conf.err("fromDoor", "Elevator not detected for door at: "+loc); return null;
+		} /*Conf.err("fromDoor", "Elevator not detected for door at: "+loc);*/ return null;
 	}
 	
 	//-- Elevator Movement Functions:
@@ -162,7 +162,7 @@ public class Elevator {
 		ChuList<Block> sList = sGroups.get(0); World world = sList.get(0).getWorld(); int xPos = sList.get(0).getX(), zPos = sList.get(0).getZ();
 		for(int y=yMin(),l=yMax(); y<l; y++) { Block bl = world.getBlockAt(xPos, y, zPos);
 			if(noTypeCheck ? (Conf.BLOCKS.indexOf(bl.getType().toString()) != -1) : (bl.getType() == floor.fType)) return bl.getY();
-		} Conf.err("getLevel", "Could not determine floor height! Returning default of "+yMin()); return yMin();
+		} Conf.err("getLevel", "Could not determine floor height! Returning ground floor at "+yMin()); return yMin();
 	} public int getLevel() { return getLevel(false); }
 	
 	//Update all elevator call signs.

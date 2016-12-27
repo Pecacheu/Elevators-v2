@@ -9,6 +9,7 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.FallingBlock;
+import org.bukkit.material.MaterialData;
 
 public class Floor {
 	public World world; public int xMin, zMin, xMax, zMax;
@@ -79,8 +80,9 @@ public class Floor {
 	
 	//-- FallingBlock Functions:
 	
-	public static FallingBlock fallingBlock(World world, double x, double y, double z, Material type) {
-		FallingBlock falling = world.spawnFallingBlock(new Location(world, x, y, z), type, (byte)0); falling.setGravity(false); return falling;
+	public static FallingBlock fallingBlock(World world, int x, double y, int z, Material type) {
+		FallingBlock falling = world.spawnFallingBlock(new Location(world, x+0.5, y, z+0.5), new MaterialData(type));
+		falling.setGravity(false); return falling;
 	}
 	
 	public void removeFallingBlocks() {

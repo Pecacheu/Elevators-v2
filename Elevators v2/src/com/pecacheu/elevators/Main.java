@@ -5,6 +5,8 @@
 
 package com.pecacheu.elevators;
 
+import org.bukkit.Bukkit;
+
 //TODO Always Check TODOs Regularly!
 //TODO NODOOR setting for individual levels?
 
@@ -42,6 +44,7 @@ public class Main extends JavaPlugin implements Listener {
 			svTmr = setInterval(() -> { Conf.saveConfig(); }, Conf.SAVE_INT*60000);
 		}, 200);
 		getServer().getPluginManager().registerEvents(this, this);
+		Bukkit.getConsoleSender().sendMessage(Conf.MSG_DBG+"§dElevators Plugin Loaded!");
 	}
 	
 	@Override
@@ -249,7 +252,8 @@ public class Main extends JavaPlugin implements Listener {
 			} else elev.doorTimer(sLevel+2); //Re-open doors if already on level.
 			
 			event.setCancelled(true);
-		}} else if(act == Action.RIGHT_CLICK_BLOCK && Conf.isElevPlayer(event.getPlayer(), ref, PERM_USE) && !((Elevator)ref.data).floor.moving) { //Go To Floor:
+		}} else if(act == Action.RIGHT_CLICK_BLOCK && Conf.isElevPlayer(event.getPlayer(), ref, PERM_USE) //Go To Floor:
+		&& (event.getItem() == null || event.getPlayer().isSneaking()) && !((Elevator)ref.data).floor.moving) {
 			Elevator elev = ((Elevator)ref.data); ChuList<Block> dsList = elev.sGroups.get(0);
 			
 			//Get Current And Selected Floors:
