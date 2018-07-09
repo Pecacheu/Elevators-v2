@@ -42,6 +42,9 @@ public class Conf {
 	C_UP, UP, C_DOWN, DOWN; public static int RADIUS_MAX, MOVE_RES, DOOR_HOLD, SAVE_INT; public static ChuList<String> BLOCKS;
 	public static ChuList<Integer> BL_SPEED; public static Material DOOR_SET; public static boolean DEBUG = false;
 	
+	//新增
+	public static String DOOR_BLOCK;
+	
 	//Constants:
 	public static final String MSG_NEW_CONF = "§e[Elevators] §bCould not load config. Creating new config file...";
 	public static final String MSG_ERR_CONF = "§e[Elevators] §cError while loading config!";
@@ -125,6 +128,7 @@ public class Conf {
 		
 		config.setDefaults(defaults); movingFloors = new ChuList<ChuList<FallingBlock>>(); CLTMR = null;
 		
+		
 		//Load Global Settings:
 		DEBUG = config.getBoolean("debug");
 		TITLE = c(config.getString("title"));
@@ -154,6 +158,7 @@ public class Conf {
 		MOVE_RES = config.getInt("updateDelay");
 		DOOR_HOLD = config.getInt("doorHoldTime");
 		SAVE_INT = config.getInt("saveInterval");
+		
 		DOOR_SET = Material.valueOf(config.getString("doorBlock"));
 		
 		//Remove any items from block list that aren't solid blocks:

@@ -1,5 +1,5 @@
 //This work is licensed under a GNU General Public License. Visit http://gnu.org/licenses/gpl-3.0-standalone.html for details.
-//Pecacheu's Elevator Plugin v2. Copyright (�) 2016, Pecacheu (Bryce Peterson, bbryce.com).
+//Pecacheu's Elevator Plugin v2. Copyright (�) 2016, Pecacheu (Bryce Peterson, bbryce.com).
 
 package com.pecacheu.elevators;
 
@@ -113,6 +113,16 @@ public class Elevator {
 		} Conf.err("fromElevSign", "Elevator not detected for sign: "+sign); return null;
 	}
 	
+	//新添加：由方块获得电梯
+	public static Elevator fromElevBlock(Block b) {
+		World sW = b.getWorld(); int sX = b.getX(), sZ = b.getZ(), sY = b.getY();
+		Object[] eKeys = Conf.elevators.keySet().toArray();
+		for(int s=0,v=eKeys.length; s<v; s++) { //Iterate through elevators:
+			Elevator elev = Conf.elevators.get(eKeys[s]); Floor fl = elev.floor;
+			if(fl.world.equals(sW) && (sX >= fl.xMin - 1 && sX <= fl.xMax + 1) && (sZ >= fl.zMin - 1 && sZ <= fl.zMax + 1) && (sY >= elev.yMin() && sY <= elev.yMax())) return elev;
+		} Conf.err("fromElevBlock", "Elevator not detected for block: "+b); return null;
+	}
+	
 	//Get elevator for call sign, if any.
 	public static CSData fromCallSign(Block sign) {
 		Object[] eKeys = Conf.elevators.keySet().toArray();
@@ -205,10 +215,13 @@ public class Elevator {
 	public void resetElevator(boolean noFloor) {
 		int yMin = this.yMin(), yMax = this.yMax();
 		World world = floor.world;
-		for(int y=yMin; y<yMax; y++) for(int x=floor.xMin; x<floor.xMax+1; x++) for(int z=floor.zMin; z<floor.zMax+1; z++) {
-			Block bl = world.getBlockAt(x, y, z); if(y == yMin && !noFloor) bl.setType(floor.fType);
-			else if(bl.getType() != Material.WALL_SIGN || (Conf.TITLE.equals(Conf.lines(bl)[0]) && !isKnownSign(bl))) //TODO Check if it works.
-			{BlockState s=bl.getState();s.setType(Conf.AIR);s.update(true);}
+		for(int y=yMin; y<yMax; y++)
+			for(int x=floor.xMin; x<floor.xMax+1; x++)
+				for(int z=floor.zMin; z<floor.zMax+1; z++) {
+					Block bl = world.getBlockAt(x, y, z);
+					if(y == yMin && !noFloor) bl.setType(floor.fType);
+					else if(bl.getType() != Material.WALL_SIGN || (Conf.TITLE.equals(Conf.lines(bl)[0]) && !isKnownSign(bl))) //TODO Check if it works.
+					{BlockState s=bl.getState();s.setType(Conf.AIR);s.update(true);}
 		}
 	} public void resetElevator() { resetElevator(false); }
 	
