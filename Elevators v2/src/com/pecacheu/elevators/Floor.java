@@ -45,14 +45,14 @@ public class Floor {
 		if(!dontDelete) { removeFallingBlocks(); elev.resetElevator(true); }
 		if(isMoving) { //Create FallingBlock Floor:
 			ChuList<FallingBlock> blocks = new ChuList<FallingBlock>(); moving = true;
-			for(int x=xMin; x<xMax+1; x++) for(int z=zMin; z<zMax+1; z++) {
+			for(int x=xMin; x<=xMax; x++) for(int z=zMin; z<=zMax; z++) {
 				blocks.push(fallingBlock(world, x, h, z, fType));
 			}
 			int ind; if(forceID!=null) ind = forceID;
 			else ind = Conf.findFirstEmpty(Conf.movingFloors);
 			Conf.movingFloors.set(ind, blocks); return ind;
 		} else { //Create Solid Floor:
-			for(int x=xMin; x<xMax+1; x++) for(int z=zMin; z<zMax+1; z++) {
+			for(int x=xMin; x<=xMax; x++) for(int z=zMin; z<=zMax; z++) {
 				Block bl = world.getBlockAt(x, (int)h, z); bl.setType(fType);
 			}
 		} return 0;
@@ -82,7 +82,7 @@ public class Floor {
 	
 	public static FallingBlock fallingBlock(World world, int x, double y, int z, Material type) {
 		FallingBlock falling = world.spawnFallingBlock(new Location(world, x+0.5, y, z+0.5), new MaterialData(type));
-		falling.setGravity(false); return falling;
+		falling.setGravity(false); falling.setDropItem(false); return falling;
 	}
 	
 	public void removeFallingBlocks() {

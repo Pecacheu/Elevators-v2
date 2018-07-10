@@ -19,6 +19,7 @@ import org.apache.commons.lang.StringEscapeUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -41,9 +42,6 @@ public class Conf {
 	public static String TITLE, CALL, ERROR, L_ST, L_END, NODOOR, MSG_GOTO_ST, MSG_GOTO_END, MSG_CALL, NOMV, M_ATLV, ATLV,
 	C_UP, UP, C_DOWN, DOWN; public static int RADIUS_MAX, MOVE_RES, DOOR_HOLD, SAVE_INT; public static ChuList<String> BLOCKS;
 	public static ChuList<Integer> BL_SPEED; public static Material DOOR_SET; public static boolean DEBUG = false;
-	
-	//新增
-	public static String DOOR_BLOCK;
 	
 	//Constants:
 	public static final String MSG_NEW_CONF = "§e[Elevators] §bCould not load config. Creating new config file...";
@@ -128,7 +126,6 @@ public class Conf {
 		
 		config.setDefaults(defaults); movingFloors = new ChuList<ChuList<FallingBlock>>(); CLTMR = null;
 		
-		
 		//Load Global Settings:
 		DEBUG = config.getBoolean("debug");
 		TITLE = c(config.getString("title"));
@@ -158,7 +155,6 @@ public class Conf {
 		MOVE_RES = config.getInt("updateDelay");
 		DOOR_HOLD = config.getInt("doorHoldTime");
 		SAVE_INT = config.getInt("saveInterval");
-		
 		DOOR_SET = Material.valueOf(config.getString("doorBlock"));
 		
 		//Remove any items from block list that aren't solid blocks:
@@ -209,15 +205,37 @@ public class Conf {
 		return new Location(world, Integer.parseInt(data[1]), 0, Integer.parseInt(data[2]));
 	}
 	
-	//Check if block is a door:
-	public static boolean isDoor(Block b) {
+	//Check if block is a door or gate:
+	@SuppressWarnings("deprecation")
+	private static boolean isDoor(Block b) {
 		String t = b.getType().toString(); return ((t.length()>5 && t.substring(t.length()-5).equals("_DOOR"))
 		|| (t.length()>11 && t.substring(t.length()-11).equals("_DOOR_BLOCK"))) && b.getData() < 8;
+	}
+	private static boolean isGate(Block b) {
+		String t = b.getType().toString(); return t.endsWith("FENCE_GATE");
 	}
 	
 	//Check if block is wooden door or top of wooden door:
 	public static boolean isWoodDoor(Block b) {
-		String t = b.getType().toString(); return t.endsWith("_DOOR");
+		String t = b.getType().toString(); return t.endsWith("_DOOR") || t.endsWith("FENCE_GATE");
+	}
+	
+	//Open/close doors & gates:
+	@SuppressWarnings("deprecation")
+	public static void setDoor(Block b, boolean onOff) {
+		if(Conf.isDoor(b) || Conf.isGate(b)) {
+			int dat = b.getData(); //Open/close door:
+			if(onOff && dat < 4) { b.setData((byte)(dat+4)); playDoorSound(b, onOff); }
+			else if(!onOff && dat >= 4) { b.setData((byte)(dat-4)); playDoorSound(b, onOff); }
+		}
+	}
+	
+	//Play door sound effect:
+	private static void playDoorSound(Block b, boolean open) {
+		Location l = b.getLocation();
+		if(Conf.isGate(b)) l.getWorld().playSound(l, open?Sound.BLOCK_FENCE_GATE_OPEN:Sound.BLOCK_FENCE_GATE_CLOSE, 1, 1);
+		else if(Conf.isWoodDoor(b)) l.getWorld().playSound(l, open?Sound.BLOCK_WOODEN_DOOR_OPEN:Sound.BLOCK_WOODEN_DOOR_CLOSE, 1, 1);
+		else l.getWorld().playSound(l, open?Sound.BLOCK_IRON_DOOR_OPEN:Sound.BLOCK_IRON_DOOR_CLOSE, 1, 1);
 	}
 	
 	//Set redstone power-state of powerable blocks:
@@ -284,6 +302,15 @@ public class Conf {
 	//Read lines from sign:
 	public static String[] lines(Block sign) {
 		return ((org.bukkit.block.Sign)sign.getState()).getLines();
+	}
+	
+	//Get block sign is attached to:
+	public static Block getSignBlock(World w, int x, int y, int z, byte d) {
+		switch(d) {
+			case 2: return w.getBlockAt(x,y,z+1); case 3: return w.getBlockAt(x,y,z-1);
+			case 4: return w.getBlockAt(x+1,y,z); case 5: return w.getBlockAt(x-1,y,z);
+		}
+		return null;
 	}
 	
 	//Determine if sign or call sign was clicked on:

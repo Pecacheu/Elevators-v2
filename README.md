@@ -31,3 +31,8 @@ Use line 4 to add a custom floor name. If not specified, the default is in the f
 If you put [nodoor] on line 3, the block-based door feature will be disabled, and call signs will turn on/off nearby levers with the door timer, allowing you to add piston doors to your elevator. Nearby iron/wooden doors will be opened/closed either way.
 
 You can create call-button signs with [call] on line 1. They will error if they're less than 1 or more than 3 blocks away from the elevator.
+
+### My Other Stuff
+[LaunchPadMC Plugin](http://dev.bukkit.org/projects/launchpad-mc), [MultiWorldPets Plugin](http://dev.bukkit.org/projects/multiworldpets), [RawColors Texture Pack](http://planetminecraft.com/texture_pack/raw-colors-15-low-contrast-complete-resource-pack)  
+ForestFire Spigot Server @ forestfiremc.net  
+[TabPlus Extension for Google Chrome](http://chrome.google.com/webstore/detail/tabplus/hfcdmjginkilbcfeffkkggemafdjflhp)
