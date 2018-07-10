@@ -1,11 +1,12 @@
 //This work is licensed under a GNU General Public License. Visit http://gnu.org/licenses/gpl-3.0-standalone.html for details.
-//Pecacheu's Elevator Plugin v2. Copyright (�) 2016, Pecacheu (Bryce Peterson, bbryce.com).
+//Pecacheu's Elevator Plugin v2. Copyright (�) 2016, Pecacheu (Bryce Peterson, bbryce.com).
 
 //Pecacheu's Elevator Plugin v2.0! Recreated from scratch!
 
 package com.pecacheu.elevators;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 
 //TODO Always Check TODOs Regularly!
 //TODO NODOOR setting for individual levels?
@@ -14,6 +15,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.event.EventHandler;
@@ -22,11 +24,17 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
+import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.material.MaterialData;
+import org.bukkit.material.PistonBaseMaterial;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+
+import net.minecraft.server.v1_11_R1.DispenserRegistry.b;
 
 public class Main extends JavaPlugin implements Listener {
 	static final String PERM_USE    = "elevators.use";
@@ -34,6 +42,9 @@ public class Main extends JavaPlugin implements Listener {
 	static final String PERM_RELOAD = "elevators.reload";
 	
 	private BukkitTask svTmr = null;
+	
+	//新增判定常量数组
+	static final int[] AddX = {1, 0, -1, 0}, AddZ = {0, 1, 0, -1};
 	
 	@Override
 	public void onEnable() {
@@ -44,7 +55,7 @@ public class Main extends JavaPlugin implements Listener {
 			svTmr = setInterval(() -> { Conf.saveConfig(); }, Conf.SAVE_INT*60000);
 		}, 200);
 		getServer().getPluginManager().registerEvents(this, this);
-		Bukkit.getConsoleSender().sendMessage(Conf.MSG_DBG+"�dElevators Plugin Loaded!");
+		Bukkit.getConsoleSender().sendMessage(Conf.MSG_DBG+"Elevators 插件已加载!");
 	}
 	
 	@Override
@@ -58,7 +69,7 @@ public class Main extends JavaPlugin implements Listener {
 		if(command.getName().equalsIgnoreCase("elev")) {
 			if(args.length == 1 && args[0].equalsIgnoreCase("reload")) {
 				setTimeout(() -> { Conf.doConfigLoad(sender); }, 200);
-			} else sender.sendMessage("�cUsage: /elev reload");
+			} else sender.sendMessage(ChatColor.RED+"使用方法: /elev reload");
 			return true;
 		}
 		return false;
@@ -77,6 +88,7 @@ public class Main extends JavaPlugin implements Listener {
 	
 	//------------------- Elevator Create Sign Events -------------------
 	
+	@SuppressWarnings("deprecation")
 	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
 	public void onSignChange(SignChangeEvent event) { synchronized(Conf.API_SYNC) { if(!Conf.DISABLED && event.getBlock().getType() == Material.WALL_SIGN) {
 		if(event.getLine(0).equalsIgnoreCase("[call]") && Conf.hasPerm(event.getPlayer(), PERM_CREATE)) { //Call Sign:
@@ -112,24 +124,48 @@ public class Main extends JavaPlugin implements Listener {
 				.get(0); if(dSign.getX() == block.getX() && dSign.getZ() == block.getZ()) { column = i; break; }} //Check if X and Z match existing sList.
 				if(column != -1) { //Existing Column:
 					ind = column; for(int k=0,m=elev.sGroups.length; k<m; k++) if(k != ind) { //Iterate through sGroups:
-						ChuList<Block> oList = elev.sGroups.get(k); int sX = oList.get(0).getX(), sZ = oList.get(0).getZ(); byte sData = oList.get(0).getData();
+						ChuList<Block> oList = elev.sGroups.get(k);
+						int sX = oList.get(0).getX(), sZ = oList.get(0).getZ();
+						byte sData = oList.get(0).getData();
 						for(int i=0,l=oList.length; i<l; i++) oList.get(i).setType(Conf.AIR); //Delete old signs in other columns.
-						oList = new ChuList<Block>(); for(int i=0,l=sList.length; i<l; i++) { Block bl = elev.floor.world.getBlockAt(sX, sList.get(i)
-						.getY(), sZ); bl.setType(Material.WALL_SIGN); bl.setData(sData); Conf.setSign(bl, Conf.lines(sList.get(i))); oList.push(bl); } //Rebuild to match new column.
+						oList = new ChuList<Block>(); for(int i=0,l=sList.length; i<l; i++) {
+							Block bl = elev.floor.world.getBlockAt(sX, sList.get(i).getY(), sZ);
+							bl.setType(Material.WALL_SIGN);
+							bl.setData(sData);
+							Conf.setSign(bl, Conf.lines(sList.get(i)));
+							oList.push(bl);
+						} //Rebuild to match new column.
 						elev.sGroups.set(k, oList);
 					}
 				} else { //New Column:
-					ChuList<Block> sRef = elev.sGroups.get(0); int sX = sList.get(0).getX(), sZ = sList.get(0).getZ();
-					byte sData = sList.get(0).getData(); World world = elev.floor.world;
+					ChuList<Block> sRef = elev.sGroups.get(0);
+					int sX = sList.get(0).getX(), sZ = sList.get(0).getZ();
+					byte sData = sList.get(0).getData();
+					World world = elev.floor.world;
 					for(int i=0,l=sList.length; i<l; i++) sList.get(i).setType(Conf.AIR); //Delete old signs in column.
-					sList = new ChuList<Block>(); for(int i=0,l=sRef.length; i<l; i++) { Block bl = world.getBlockAt(sX, sRef.get(i).getY(),
-					sZ); bl.setType(Material.WALL_SIGN); bl.setData(sData); Conf.setSign(bl, Conf.lines(sRef.get(i))); sList.push(bl); } //Rebuild to match other columns.
-					elev.sGroups.push(sList); setTimeout(() -> { Conf.saveConfig(); }, 200); return; //Add new signs to elevator and save.
+					sList = new ChuList<Block>();
+					for(int i=0,l=sRef.length; i<l; i++) {
+						Block bl = world.getBlockAt(sX, sRef.get(i).getY(),sZ);
+						bl.setType(Material.WALL_SIGN);
+						bl.setData(sData);
+						Conf.setSign(bl, Conf.lines(sRef.get(i)));
+						sList.push(bl);
+					} //Rebuild to match other columns.
+					elev.sGroups.push(sList);
+					setTimeout(() -> { Conf.saveConfig(); }, 200);
+					return; //Add new signs to elevator and save.
 				}
 			} else { //New elevator:
-				Floor fl = Floor.getFloor(block, null); if(fl==null) { event.setLine(0, Conf.ERROR); Conf.err("onSignChange:ElevSign:NewElev", "Floor not found!"); return; }
+				Floor fl = Floor.getFloor(block, null);
+				if(fl==null) {
+					event.setLine(0, Conf.ERROR);
+					Conf.err("onSignChange:ElevSign:NewElev", "Floor not found!");
+					return;
+				}
 				String eID = Conf.locToString(new Location(fl.world, fl.xMin, 0, fl.zMin));
-				elev = new Elevator(fl, null, null); fl.elev = elev; ind = -1;
+				elev = new Elevator(fl, null, null);
+				fl.elev = elev;
+				ind = -1;
 				Conf.elevators.put(eID, elev);
 			}
 			
@@ -169,7 +205,7 @@ public class Main extends JavaPlugin implements Listener {
 	//------------------- Elevator Destroy Sign Events -------------------
 	
 	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-	public void onBlcokBreak(BlockBreakEvent event) { synchronized(Conf.API_SYNC) { if(!Conf.DISABLED && event.getBlock().getType() == Material.WALL_SIGN) {
+	public void onBlockBreak(BlockBreakEvent event) {synchronized(Conf.API_SYNC) { if(!Conf.DISABLED && event.getBlock().getType() == Material.WALL_SIGN) {
 		if(Conf.CLTMR != null) { event.setCancelled(true); Conf.err("onBlcokBreak", "Door timer is running!"); return; }
 		if(Conf.CALL.equals(Conf.lines(event.getBlock())[0]) && Conf.hasPerm(event.getPlayer(), PERM_CREATE)) { //Call Sign:
 			Block block = event.getBlock();
@@ -191,7 +227,17 @@ public class Main extends JavaPlugin implements Listener {
 			
 			//Is sign in elevator?
 			Elevator elev = Elevator.fromElevSign(block); if(elev==null) { Conf.err("onBlcokBreak:ElevSign", "No elevator found!"); return; }
-			if(elev.floor.moving) { event.setCancelled(true); Conf.err("onBlcokBreak:ElevSign", "Elevator is moving!"); return; }
+			if(elev.floor.moving) {
+				event.getPlayer().sendMessage(ChatColor.RED + "请等待电梯停止运行并关闭楼层门后拆除电梯！");
+				event.setCancelled(true);
+				Conf.err("onBlcokBreak:ElevSign", "Elevator is moving!");
+				return;
+			}
+			
+			//新增：移除生成的玻璃和地板，防止刷物品
+			World w = block.getWorld();
+			int bY = block.getY();
+			int fxMax = elev.floor.xMax, fxMin = elev.floor.xMin, fzMax = elev.floor.zMax, fzMin = elev.floor.zMin;
 			
 			//Build sign list:
 			ChuList<Block> sList = Elevator.rebuildSignList(block.getLocation()); elev.resetElevator();
@@ -201,22 +247,107 @@ public class Main extends JavaPlugin implements Listener {
 			.get(i).get(0).getX() && block.getZ() == elev.sGroups.get(i).get(0).getZ()) { ind = i; break; }
 			if(ind == -1) { Conf.err("onBlcokBreak:ElevSign", "Cannot determine column index."); return; }
 			
-			if(elev.sGroups.length > 1) { //Delete Whole Columns:
+			if(elev.sGroups.length > 1) { //Delete Whole Columns: 诶？！这段貌似不会执行诶 ！永远执行的else、、、
 				for(int i=0,l=sList.length; i<l; i++) sList.get(i).setType(Conf.AIR);
 				elev.sGroups.remove(ind); //Remove column from elevator.
+				
+				Bukkit.broadcastMessage("elev.sGroups.length > 1");
+				//防止删除电梯最低层后在其上一层自动生成地板，此处清理非唯一一层且是最底层的地板
+				if(bY - 2 == elev.yMin() && elev.sGroups.length > 0) {
+					for(int xx = fxMin; xx <= fxMax; xx++) {
+						for(int zz = fzMin; zz <= fzMax; zz++) {
+							w.getBlockAt(xx, bY - 2, zz).setType(Conf.AIR);
+						}
+					}
+				}
+				
 			} else { //Only One Column Left:
 				int subInd = sList.indexOf(block); if(subInd == -1) { Conf.err("onBlcokBreak:ElevSign:LastColumn", "Cannot determine subList index."); return; }
 				for(int i=0,l=sList.length; i<l; i++) if(i != subInd) elev.floor.addFloor(sList.get(i).getY()-2, false, true); //Add floors.
 				if(elev.csGroups.get(subInd) != null) for(int h=0,d=elev.csGroups.get
 				(subInd).length; h<d; h++) elev.csGroups.get(subInd).get(h).setType(Conf.AIR); //Delete call signs on level.
-				Block pBl = Conf.getBlockBelowPlayer(event.getPlayer()); if(pBl.getType() == Conf.AIR) pBl.setType(elev.floor.fType); //Add block below player.
+				//下面这句话会让玩家刷物品（凭空获得方块）
+				//Block pBl = Conf.getBlockBelowPlayer(event.getPlayer()); if(pBl.getType() == Conf.AIR) pBl.setType(elev.floor.fType); //Add block below player.
 				if(sList.length <= 1) elev.selfDestruct(); //Delete elevator instance. This meeting... never happened.
 				else { sList.remove(subInd); elev.sGroups.set(ind, sList); } //Remove sign from elevator.
 			}
 			
+			//执行清理周围自动生成的doorset方块
+			for(int yy = bY - 2; yy <= bY + 1; yy++) {
+				for(int xx = fxMin - 1; xx <= fxMax + 1; xx++) {
+					Block b = w.getBlockAt(xx, yy, fzMin - 1);
+					if(b.getType() == Conf.DOOR_SET) b.setType(Conf.AIR);
+				}
+				for(int xx = fxMin - 1; xx <= fxMax + 1; xx++) {
+					Block b = w.getBlockAt(xx, yy, fzMax + 1);
+					if(b.getType() == Conf.DOOR_SET) b.setType(Conf.AIR);
+				}
+				for(int zz = fzMin - 1; zz <= fzMax + 1; zz++) {
+					Block b = w.getBlockAt(fxMin - 1, yy, zz);
+					if(b.getType() == Conf.DOOR_SET) b.setType(Conf.AIR);
+				}
+				for(int zz = fzMin - 1; zz <= fzMax + 1; zz++) {
+					Block b = w.getBlockAt(fxMax + 1, yy, zz);
+					if(b.getType() == Conf.DOOR_SET) b.setType(Conf.AIR);
+				}
+			}
+			
 			setTimeout(() -> { Conf.saveConfig(); }, 200); //Save Changes To Config.
 		}
-	}}}
+	} else {
+		//新增
+		Block block = event.getBlock();
+		if(Conf.BLOCKS.indexOf(block.getType().toString()) != -1) {
+			Elevator elev = Elevator.fromElevBlock(block);
+			if(elev != null && elev.floor.fType == block.getType()) {
+				event.getPlayer().sendMessage(ChatColor.RED + "请不要破坏电梯！如果想拆除此电梯，请先拆除[elevator]告示牌");
+				event.setCancelled(true);
+			}
+		} else if (block.getType() == Conf.DOOR_SET) {
+			Elevator elev = Elevator.fromElevBlock(block);
+			if(elev != null) {
+				event.getPlayer().sendMessage(ChatColor.RED + "请不要破坏电梯！如果想拆除此电梯，请先拆除[elevator]告示牌");
+				event.setCancelled(true);
+			}
+		} else {
+			World w = block.getWorld();
+			int bX = block.getX(), bY = block.getY(), bZ = block.getZ();
+			for(int i = 0; i < 4; i++) {
+				int nX = bX + AddX[i], nZ = bZ + AddZ[i];
+				Block b = w.getBlockAt(nX, bY, nZ);
+				if(b.getType() == Material.WALL_SIGN && Conf.TITLE.equals(Conf.lines(b)[0])) {
+					event.getPlayer().sendMessage(ChatColor.RED + "请不要破坏电梯！如果想拆除此电梯，请先拆除[elevator]告示牌");
+					event.setCancelled(true);
+				}
+			}
+		}
+	}
+	}}
+	
+	//------------------- Elevator Piston Events -------------------
+	//防止活塞偷鸡
+	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+	public void onPistonExtend(BlockPistonExtendEvent event) {
+		Block b = event.getBlock();
+		BlockFace bf = event.getDirection();
+		if (Elevator.fromElevBlock(b.getWorld().getBlockAt(
+				b.getX() + bf.getModX(), b.getY() + bf.getModY(), b.getZ() + bf.getModZ())) != null) {
+			event.setCancelled(true);
+		}
+	}
+	
+	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+	public void onPistonRetract(BlockPistonRetractEvent event) {
+		Block b = event.getBlock();
+		BlockFace bf = event.getDirection();
+		if (Elevator.fromElevBlock(b.getWorld().getBlockAt(
+				b.getX() - bf.getModX()*2, b.getY() - bf.getModY()*2, b.getZ() - bf.getModZ()*2)) != null) {
+			event.setCancelled(true);
+			PistonBaseMaterial pBaseMaterial = (PistonBaseMaterial) b.getState();
+			pBaseMaterial.setPowered(false);
+		}
+	}
+	
 	
 	//------------------- Elevator Block-Clicking Events -------------------
 	
