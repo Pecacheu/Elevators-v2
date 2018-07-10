@@ -77,14 +77,13 @@ public class Conf {
 		if(!path.exists()) { data = newConfig(path); } else {
 			try { //Read Current Config File:
 				FileReader file = new FileReader(path); int p = 0;
-				while(p < 3000) { int read = file.read(); if(read < 0 || read >=
-				65535) break; data += fromCharCode(read); p++; } file.close();
-			} catch (IOException e) { err("saveConfig", "IOException while reading file!"); return false; }
+				while(p < 3000) { int read = file.read(); if(read < 0 || read >= 65535) break; data += fromCharCode(read); p++; } file.close();
+			} catch (IOException e) { err("saveConfig", "IOException while reading file!"); return false; } return true;
 		}
 		
 		if(data.length() == 0) { err("saveConfig", "Save data string empty!"); return false; }
 		
-		//Seperate And Overwrite BLOCKS Section:
+		//Separate And Overwrite BLOCKS Section:
 		int bPos = data.lastIndexOf("blockList:"); String bStr = data.substring(bPos);
 		
 		int bEnd = 0, nl = 0; while(bEnd < 600) {
@@ -157,15 +156,19 @@ public class Conf {
 		SAVE_INT = config.getInt("saveInterval");
 		DOOR_SET = Material.valueOf(config.getString("doorBlock"));
 		
-		//Remove any items from block list that aren't solid blocks:
 		ConfigurationSection bList = config.getConfigurationSection("blockList");
-		if(bList != null) { Object[] bKeys = bList.getKeys(false).toArray();
-			BLOCKS = new ChuList<String>(); BL_SPEED = new ChuList<Integer>();
-			for(int b=0,g=bKeys.length; b<g; b++) { Material mat = Material.valueOf((String)bKeys[b]);
-			if(mat.isSolid()) { BLOCKS.push((String)bKeys[b]); BL_SPEED.push(bList.getInt((String)bKeys[b])); }}
-		} else { //Load Default Block Settings:
-			BLOCKS = new ChuList<String>("IRON_BLOCK", "GOLD_BLOCK", "EMERALD_BLOCK", "DIAMOND_BLOCK", "GLASS");
-			BL_SPEED = new ChuList<Integer>(8, 10, 12, 15, 4);
+		BLOCKS = new ChuList<String>(); BL_SPEED = new ChuList<Integer>();
+		if(bList != null) {
+			Object[] bKeys = bList.getKeys(false).toArray();
+			for(int b=0,g=bKeys.length; b<g; b++) { //Remove any items from block list that aren't solid blocks:
+				Material mat = Material.valueOf((String)bKeys[b]);
+				if(mat != null && mat.isSolid()) { BLOCKS.push((String)bKeys[b]); BL_SPEED.push(bList.getInt((String)bKeys[b])); }
+			}
+		}
+		
+		if(BLOCKS.length < 1) { //Load Default Block Settings:
+			BLOCKS = new ChuList<String>("IRON_BLOCK", "GOLD_BLOCK", "EMERALD_BLOCK", "DIAMOND_BLOCK", "STAINED_GLASS", "GLASS");
+			BL_SPEED = new ChuList<Integer>(8, 10, 12, 15, 5, 4);
 		}
 		
 		//Load Compressed Elevator Data:
@@ -174,7 +177,7 @@ public class Conf {
 			Elevator elev = Elevator.fromSaveData(eList.getStringList((String)eKeys[i]));
 			if(elev != null) elevators.put((String)eKeys[i], elev); else { eCnt++; err("loadConfig", "fromSaveData returned null at ID "+eKeys[i]); }
 		}}
-		return pathFound?eCnt:"NOPATH";
+		return pathFound?eCnt:"NOCONF";
 	} catch(Exception e) { err("loadConfig", "Caught Exception: "+e.getMessage()); return e.getMessage(); }}
 	
 	public static void doConfigLoad(CommandSender sender) {
