@@ -17,22 +17,23 @@ The only info the plugin stores is the X and Z location of each elevator, under 
 - **elevators.reload** Reload plugin (`/elev reload`), receive debugging info.
 
 ### Development
-Anyway, this plugin took WEEKS to develop, but the initial development went pretty fast, as I prototyped the plugin in ScriptCraft first, but when I tried to port it to Java, I found that it was a bit harder than I thought! (You can find both the JS version and the port [here](https://github.com/Pecacheu/Elevators).) So with Elevators v2, I just started over, using similar code, but taking advantage of Java's more object-oriented nature. You can find the v2 source [here](https://github.com/Pecacheu/Elevators-v2). The license is GNU-GPL.
+This plugin took WEEKS to develop. The initial development took only a week, as I prototyped the plugin in ScriptCraft first, but when I tried to port it to Java, I found that it was a bit harder than I thought! (You can find both the JS version and the port [here](https://github.com/Pecacheu/Elevators).) So with Elevators v2, I just started over, using similar code, but taking advantage of Java's more object-oriented nature. You can find the v2 source [here](https://github.com/Pecacheu/Elevators-v2). The license is GNU-GPL.
 
 Find the plugin on [BukkitDev](http://dev.bukkit.org/projects/elevators-v2)!
-
-Also, a video tutorial should be coming soon!
 
 ### How To Use
 Place signs with [elevator] on line 1 on each floor. They will error (showing [???]) if the floor is too big or an invalid type. (You can change floor types and associated speeds in the config.)
 
 Use line 4 to add a custom floor name. If not specified, the default is in the format `Level [n]`. If the floor name matches this format, and [n] is a valid number, it will be automatically updated whenever the elevator is modified. (In case a floor was added in-between floors, changing the floor numbering.)
 
-If you put [nodoor] on line 3, the block-based door feature will be disabled, and call signs will turn on/off nearby levers with the door timer, allowing you to add piston doors to your elevator. Nearby iron/wooden doors will be opened/closed either way.
+If you put [nodoor] on line 3, the block-based door feature will be disabled, and call signs will gain the ability to turn nearby levers on and off with the door timer, allowing you to create piston doors for your elevator. Nearby doors and gates will be opened/closed either way.
 
 You can create call-button signs with [call] on line 1. They will error if they're less than 1 or more than 3 blocks away from the elevator.
 
+#### User-made Tutorial:
+https://www.youtube.com/watch?v=9nzRgzJEpJ0
+
 ### My Other Stuff
 [LaunchPadMC Plugin](http://dev.bukkit.org/projects/launchpad-mc), [MultiWorldPets Plugin](http://dev.bukkit.org/projects/multiworldpets), [RawColors Texture Pack](http://planetminecraft.com/texture_pack/raw-colors-15-low-contrast-complete-resource-pack)  
-ForestFire Spigot Server @ forestfiremc.net  
+ForestFire Spigot Server @ [forestfiremc.net](http://forestfiremc.net)  
 [TabPlus Extension for Google Chrome](http://chrome.google.com/webstore/detail/tabplus/hfcdmjginkilbcfeffkkggemafdjflhp)
