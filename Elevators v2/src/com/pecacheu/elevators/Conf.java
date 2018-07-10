@@ -305,12 +305,18 @@ public class Conf {
 	}
 	
 	//Get block sign is attached to:
-	public static Block getSignBlock(World w, int x, int y, int z, byte d) {
+	public static Block getSignBlock(Block s, byte d) {
+		World w = s.getWorld(); int x = s.getX(), y = s.getY(), z = s.getZ();
 		switch(d) {
 			case 2: return w.getBlockAt(x,y,z+1); case 3: return w.getBlockAt(x,y,z-1);
 			case 4: return w.getBlockAt(x+1,y,z); case 5: return w.getBlockAt(x-1,y,z);
 		}
 		return null;
+	}
+	
+	//Ensure there is a solid block behind the sign.
+	public static void addSignBlock(Block s, byte d) {
+		Block b = Conf.getSignBlock(s,d); if(!b.getType().isSolid()) b.setType(Conf.DOOR_SET);
 	}
 	
 	//Determine if sign or call sign was clicked on:

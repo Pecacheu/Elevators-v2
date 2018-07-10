@@ -5,6 +5,8 @@
 
 package com.pecacheu.elevators;
 
+import java.util.Iterator;
+
 import org.bukkit.Bukkit;
 
 //TODO Always Check TODOs Regularly!
@@ -16,12 +18,17 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPhysicsEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
+import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -117,8 +124,7 @@ public class Main extends JavaPlugin implements Listener {
 						byte sData = sList.get(0).getData(); World w = elev.floor.world;
 						for(int i=0,l=oList.length; i<l; i++) oList.get(i).setType(Conf.AIR); //Delete old signs in other columns.
 						oList = new ChuList<Block>(); for(int i=0,l=sList.length; i<l; i++) { //Rebuild to match new column.
-							Block bl = Conf.getSignBlock(w,sX,sList.get(i).getY(),sZ,sData); if(!bl.getType().isSolid()) bl.setType(Conf.DOOR_SET);
-							bl = w.getBlockAt(sX, sList.get(i).getY(), sZ); bl.setType(Material.WALL_SIGN);
+							Block bl = w.getBlockAt(sX, sList.get(i).getY(), sZ); Conf.addSignBlock(bl,sData); bl.setType(Material.WALL_SIGN);
 							bl.setData(sData); Conf.setSign(bl, Conf.lines(sList.get(i))); oList.push(bl);
 						}
 						elev.sGroups.set(k, oList);
@@ -128,8 +134,7 @@ public class Main extends JavaPlugin implements Listener {
 					byte sData = sList.get(0).getData(); World w = elev.floor.world;
 					for(int i=0,l=sList.length; i<l; i++) sList.get(i).setType(Conf.AIR); //Delete old signs in column.
 					sList = new ChuList<Block>(); for(int i=0,l=sRef.length; i<l; i++) { //Rebuild to match other columns.
-						Block bl = Conf.getSignBlock(w,sX,sRef.get(i).getY(),sZ,sData); if(!bl.getType().isSolid()) bl.setType(Conf.DOOR_SET);
-						bl = w.getBlockAt(sX, sRef.get(i).getY(), sZ); bl.setType(Material.WALL_SIGN);
+						Block bl = w.getBlockAt(sX, sRef.get(i).getY(), sZ); Conf.addSignBlock(bl,sData); bl.setType(Material.WALL_SIGN);
 						bl.setData(sData); Conf.setSign(bl, Conf.lines(sRef.get(i))); sList.push(bl);
 					}
 					elev.sGroups.push(sList); setTimeout(() -> { Conf.saveConfig(); }, 200); return; //Add new signs to elevator and save.
@@ -138,7 +143,7 @@ public class Main extends JavaPlugin implements Listener {
 				Floor fl = Floor.getFloor(block, null); if(fl==null) { event.setLine(0, Conf.ERROR); Conf.err("onSignChange:ElevSign:NewElev", "Floor not found!"); return; }
 				String eID = Conf.locToString(new Location(fl.world, fl.xMin, 0, fl.zMin));
 				elev = new Elevator(fl, null, null); fl.elev = elev; ind = -1;
-				Conf.elevators.put(eID, elev);
+				Conf.elevators.put(eID, elev); event.getPlayer().sendMessage("§eElevator created.");
 			}
 			
 			//Validate Sign Placement:
@@ -182,55 +187,87 @@ public class Main extends JavaPlugin implements Listener {
 	//------------------- Elevator Destroy Sign/Block Events -------------------
 	
 	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+	public void onBlockPhysics(BlockPhysicsEvent event) { synchronized(Conf.API_SYNC) { if(!Conf.DISABLED) {
+		Block b = event.getBlock(); if(b.getType() == Material.WALL_SIGN) {
+			if(Conf.CALL.equals(Conf.lines(b)[0]) || Conf.TITLE.equals(Conf.lines(b)[0])) event.setCancelled(true); //Prevent sign break.
+		}
+	}}}
+	
+	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
 	public void onBlockBreak(BlockBreakEvent event) { synchronized(Conf.API_SYNC) { if(!Conf.DISABLED) {
-		Block block = event.getBlock();
-		if(block.getType() == Material.WALL_SIGN) {
-			if(Conf.CLTMR != null) { event.setCancelled(true); Conf.err("onBlockBreak", "Door timer is running!"); return; }
-			if(Conf.CALL.equals(Conf.lines(block)[0]) && Conf.hasPerm(event.getPlayer(), PERM_CREATE)) { //Call Sign:
-				//Is sign in elevator?
-				CSData ret = Elevator.fromCallSign(block); if(ret==null) { Conf.err("onBlockBreak:CallSign", "No elevator found!"); return; }
-				Elevator elev = ret.elev; int csNum = ret.index;
-				if(elev.floor.moving) { event.setCancelled(true); Conf.err("onBlockBreak:CallSign", "Elevator is moving!"); return; }
-				
-				//Build sign list:
-				elev.csGroups = elev.rebuildCallSignList(block.getLocation());
-				if(elev.csGroups.get(csNum).remove(elev.csGroups.get(csNum).indexOf(block)) == null) { Conf.err("onBlockBreak:CallSign", "Call sign not found in csList!"); return; }
-				
-				//Update call signs:
-				elev.updateCallSigns(elev.getLevel());
-				
-			} else if(Conf.TITLE.equals(Conf.lines(block)[0]) && Conf.hasPerm(event.getPlayer(), PERM_CREATE)) { //Elevator Sign:
-				//Is sign in elevator?
-				Elevator elev = Elevator.fromElevSign(block); if(elev==null) { Conf.err("onBlockBreak:ElevSign", "No elevator found!"); return; }
-				if(elev.floor.moving) { event.setCancelled(true); Conf.err("onBlockBreak:ElevSign", "Elevator is moving!"); return; }
-				
-				//Build sign list:
-				ChuList<Block> sList = Elevator.rebuildSignList(block.getLocation()); elev.resetElevator();
-				
-				//Find sGroups index:
-				int ind = -1; for(int i=0,l=elev.sGroups.length; i<l; i++) if(block.getX() == elev.sGroups
-				.get(i).get(0).getX() && block.getZ() == elev.sGroups.get(i).get(0).getZ()) { ind = i; break; }
-				if(ind == -1) { Conf.err("onBlockBreak:ElevSign", "Cannot determine column index."); return; }
-				
-				if(elev.sGroups.length > 1) { //Delete Whole Columns:
-					for(int i=0,l=sList.length; i<l; i++) sList.get(i).setType(Conf.AIR);
-					Block pBl = Conf.getBlockBelowPlayer(event.getPlayer()); if(pBl.getType() == Conf.AIR) pBl.setType(Material.DIRT); //Add block below player.
-					elev.sGroups.remove(ind); //Remove column from elevator.
-				} else { //Only One Column Left:
-					int subInd = sList.indexOf(block); if(subInd == -1) { Conf.err("onBlockBreak:ElevSign:LastColumn", "Cannot determine subList index."); return; }
-					for(int i=0,l=sList.length; i<l; i++) if(i != subInd) elev.floor.addFloor(sList.get(i).getY()-2, false, true); //Add floors.
-					if(elev.csGroups.get(subInd) != null) for(int h=0,d=elev.csGroups.get(subInd).length; h<d; h++)
-						elev.csGroups.get(subInd).get(h).setType(Conf.AIR); //Delete call signs on level.
-					if(sList.length <= 1) elev.selfDestruct(); //Delete elevator instance. This meeting... never happened.
-					else { sList.remove(subInd); elev.sGroups.set(ind, sList); } //Remove sign from elevator.
-					Block pBl = Conf.getBlockBelowPlayer(event.getPlayer()); if(pBl.getType() == Conf.AIR) pBl.setType(Material.DIRT); //Add block below player.
-					elev.remBlockDoor(block.getY()); //Delete block door.
-				}
-				
-				setTimeout(() -> { Conf.saveConfig(); }, 200); //Save Changes To Config.
-			}
-		} else if(Elevator.fromElevBlock(block) != null) {
-			event.setCancelled(true); block.setType(Conf.AIR); //Prevent door block grief.
+		Block b = event.getBlock(); if(b.getType() == Material.WALL_SIGN) {
+			if(Conf.CALL.equals(Conf.lines(b)[0])) onDestroyCallSign(event, event.getPlayer(), b); //Call Sign
+			else if(Conf.TITLE.equals(Conf.lines(b)[0])) onDestroyElevSign(event, event.getPlayer(), b); //Elevator Sign
+		} else if(Elevator.fromElevBlock(b) != null) { //Block Door:
+			event.setCancelled(true); b.setType(Conf.AIR); //Prevent door block grief.
+		}
+	}}}
+	
+	private void onDestroyCallSign(Cancellable e, Player p, Block b) {
+		if(Conf.CLTMR != null) { e.setCancelled(true); Conf.err("onBlockBreak:CallSign", "Door timer is running!"); return; }
+		if(!Conf.hasPerm(p, PERM_CREATE)) { Conf.err("onBlockBreak:CallSign", "No permission!"); e.setCancelled(true); return; }
+		
+		//Is sign in elevator?
+		CSData ret = Elevator.fromCallSign(b); if(ret==null) { Conf.err("onBlockBreak:CallSign", "No elevator found!"); return; }
+		Elevator elev = ret.elev; int csNum = ret.index;
+		if(elev.floor.moving) { e.setCancelled(true); Conf.err("onBlockBreak:CallSign", "Elevator is moving!"); return; }
+		
+		//Build sign list:
+		elev.csGroups = elev.rebuildCallSignList(b.getLocation());
+		if(elev.csGroups.get(csNum).remove(elev.csGroups.get(csNum).indexOf(b)) == null) {
+			Conf.err("onBlockBreak:CallSign", "Call sign not found in csList!"); return;
+		}
+		
+		//Update call signs:
+		elev.updateCallSigns(elev.getLevel());
+	}
+	
+	private void onDestroyElevSign(Cancellable e, Player p, Block b) {
+		if(Conf.CLTMR != null) { e.setCancelled(true); Conf.err("onBlockBreak:ElevSign", "Door timer is running!"); return; }
+		if(!Conf.hasPerm(p, PERM_CREATE)) { e.setCancelled(true); Conf.err("onBlockBreak:ElevSign", "No permission!"); return; }
+		
+		//Is sign in elevator?
+		Elevator elev = Elevator.fromElevSign(b); if(elev==null) { Conf.err("onBlockBreak:ElevSign", "No elevator found!"); return; }
+		if(elev.floor.moving) { e.setCancelled(true); Conf.err("onBlockBreak:ElevSign", "Elevator is moving!"); return; }
+		
+		//Build sign list:
+		ChuList<Block> sList = Elevator.rebuildSignList(b.getLocation()); elev.resetElevator();
+		
+		//Find sGroups index:
+		int ind = -1; for(int i=0,l=elev.sGroups.length; i<l; i++) if(b.getX() == elev.sGroups
+		.get(i).get(0).getX() && b.getZ() == elev.sGroups.get(i).get(0).getZ()) { ind = i; break; }
+		if(ind == -1) { Conf.err("onBlockBreak:ElevSign", "Cannot determine column index."); return; }
+		
+		if(elev.sGroups.length > 1) { //Delete Whole Columns:
+			for(int i=0,l=sList.length; i<l; i++) sList.get(i).setType(Conf.AIR);
+			elev.sGroups.remove(ind); //Remove column from elevator.
+		} else { //Only One Column Left:
+			int subInd = sList.indexOf(b); if(subInd == -1) { Conf.err("onBlockBreak:ElevSign:LastColumn", "Cannot determine subList index."); return; }
+			Floor fl = elev.floor; for(int i=0,l=sList.length; i<l; i++) if(i != subInd) fl.addFloor(sList.get(i).getY()-2, false, true); //Add floors.
+			ChuList<Block> cs = elev.csGroups.get(subInd); if(cs != null) for(int h=0,d=cs.length; h<d; h++) cs.get(h).setType(Conf.AIR); //Delete call signs on level.
+			if(sList.length <= 1) { elev.selfDestruct(); p.sendMessage("§eElevator destroyed."); } //Delete elevator instance. This meeting... never happened.
+			else { sList.remove(subInd); elev.sGroups.set(ind, sList); } //Remove sign from elevator.
+			int y = b.getY()-2; for(int x=fl.xMin; x<=fl.xMax; x++) for(int z=fl.zMin; z<=fl.zMax; z++) fl.world.getBlockAt(x,y,z).setType(Conf.AIR); //Remove floor.
+			Block pBl = Conf.getBlockBelowPlayer(p); if(pBl.getType() == Conf.AIR) pBl.setType(Material.DIRT); //Add block below player.
+			elev.remBlockDoor(b.getY()); //Delete block door.
+		}
+		
+		setTimeout(() -> { Conf.saveConfig(); }, 200); //Save Changes To Config.
+	}
+	
+	//------------------- Piston Interact Events -------------------
+	
+	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+	public void onPistonExtend(BlockPistonExtendEvent event) { synchronized(Conf.API_SYNC) { if(!Conf.DISABLED) {
+		Iterator<Block> i = event.getBlocks().iterator(); while(i.hasNext()) {
+			if(Elevator.fromElevBlock(i.next()) != null) { event.setCancelled(true); Conf.err("onPistonExtend", "Prevent block destory!"); }
+		}
+	}}}
+	
+	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+	public void onPistonRetract(BlockPistonRetractEvent event) { synchronized(Conf.API_SYNC) { if(!Conf.DISABLED) {
+		Iterator<Block> i = event.getBlocks().iterator(); while(i.hasNext()) {
+			if(Elevator.fromElevBlock(i.next()) != null) { event.setCancelled(true); Conf.err("onPistonRetract", "Prevent block destory!"); }
 		}
 	}}}
 	

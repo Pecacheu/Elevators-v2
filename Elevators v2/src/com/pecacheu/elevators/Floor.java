@@ -52,9 +52,7 @@ public class Floor {
 			else ind = Conf.findFirstEmpty(Conf.movingFloors);
 			Conf.movingFloors.set(ind, blocks); return ind;
 		} else { //Create Solid Floor:
-			for(int x=xMin; x<=xMax; x++) for(int z=zMin; z<=zMax; z++) {
-				Block bl = world.getBlockAt(x, (int)h, z); bl.setType(fType);
-			}
+			for(int x=xMin; x<=xMax; x++) for(int z=zMin; z<=zMax; z++) world.getBlockAt(x,(int)h,z).setType(fType);
 		} return 0;
 	} public int addFloor(double h, boolean isMoving, boolean dontDelete) { return addFloor(h, isMoving, dontDelete, null); }
 	public int addFloor(double h, boolean isMoving) { return addFloor(h, isMoving, false, null); }
