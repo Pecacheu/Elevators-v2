@@ -74,7 +74,7 @@ public class Conf {
 		File path = new File(CONFIG_PATH); String data = "";
 		
 		//If Not Found, Create New Config File:
-		if(!path.exists()) { data = newConfig(path); } else {
+		if(!path.exists()) data = newConfig(path); else {
 			try { //Read Current Config File:
 				FileReader file = new FileReader(path); int p = 0;
 				while(p < 3000) { int read = file.read(); if(read < 0 || read >= 65535) break; data += fromCharCode(read); p++; } file.close();
@@ -107,8 +107,7 @@ public class Conf {
 		
 		//Append New Data And Save File:
 		String eStr = eConf.saveToString(); eStr.substring(0,eStr.length()-1); data += eStr;
-		Writer file; try { file = new BufferedWriter(new OutputStreamWriter(new
-		FileOutputStream(path), "UTF-8")); file.write(data); file.close(); }
+		Writer file; try { file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(path), "UTF-8")); file.write(data); file.close(); }
 		catch (IOException e) { err("saveConfig", "IOException while saving file!"); return false; } return true;
 	}
 	
