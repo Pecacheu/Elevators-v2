@@ -78,7 +78,7 @@ public class Conf {
 			try { //Read Current Config File:
 				FileReader file = new FileReader(path); int p = 0;
 				while(p < 3000) { int read = file.read(); if(read < 0 || read >= 65535) break; data += fromCharCode(read); p++; } file.close();
-			} catch (IOException e) { err("saveConfig", "IOException while reading file!"); return false; } return true;
+			} catch (IOException e) { err("saveConfig", "IOException while reading file!"); return false; }
 		}
 		
 		if(data.length() == 0) { err("saveConfig", "Save data string empty!"); return false; }
