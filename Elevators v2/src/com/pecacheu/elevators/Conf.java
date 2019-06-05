@@ -25,6 +25,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
+import org.bukkit.block.data.Openable;
 import org.bukkit.block.data.type.Door;
 import org.bukkit.block.data.type.Gate;
 import org.bukkit.command.CommandSender;
@@ -326,16 +327,20 @@ public class Conf {
     @SuppressWarnings("deprecation")
     public static void setDoor(Block b, boolean onOff) {
         if (Conf.isDoor(b) || Conf.isGate(b)) {
-            int dat = b.getData(); //Open/close door:
-            BlockState blockState = b.getState();
-            MaterialData blockData = blockState.getData();
-            if (onOff && dat < 4) {
+            //int dat = b.getData(); //Open/close door:
+            BlockData data = b.getBlockData();
+            Openable openable = (Openable) data;
+            openable.setOpen(onOff);
+            b.setBlockData(data);
+            playDoorSound(b, onOff);
+            b.getState().update();
+            /*if (onOff && dat < 4) {
                 blockData.setData((byte) (dat + 4));
                 playDoorSound(b, onOff);
             } else if (!onOff && dat >= 4) {
                 blockData.setData((byte) (dat - 4));
                 playDoorSound(b, onOff);
-            }
+            }*/
         }
     }
 
