@@ -38,10 +38,10 @@ blockList:
   GOLD_BLOCK: 10
   EMERALD_BLOCK: 12
   DIAMOND_BLOCK: 15
-  STAINED_GLASS: 5
+  LEGACY_STAINED_GLASS: 5
   GLASS: 4
 
-doorBlock: 'THIN_GLASS' # Material used for elevator block-doors.
+doorBlock: 'LEGACY_THIN_GLASS' # Material used for elevator block-doors.
 
 # Stored elevator locations:
 

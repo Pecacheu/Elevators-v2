@@ -7,9 +7,14 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.BlockState;
+import org.bukkit.block.data.Directional;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.FallingBlock;
 import org.bukkit.material.MaterialData;
+
+import static org.bukkit.Bukkit.getServer;
 
 public class Floor {
     public World world;
@@ -40,7 +45,10 @@ public class Floor {
             return null;
         }
         int xP = 1, xN = 1, zP = 1, zN = 1;
-        String face = ((org.bukkit.material.Sign) b.getState().getData()).getFacing().toString();
+        //String face = ((org.bukkit.material.Sign) b.getState().getData()).getFacing().toString();
+
+        BlockFace blockFace = ((Directional) b.getBlockData()).getFacing();
+        String face = blockFace.toString();
 
         if (face != "WEST") while (xP <= Conf.RADIUS_MAX) {
             if (world.getBlockAt(bX + xP, h, bZ).getType() != fType) break;
