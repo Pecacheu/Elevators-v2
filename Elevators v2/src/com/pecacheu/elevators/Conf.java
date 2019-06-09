@@ -90,7 +90,7 @@ public class Conf {
         defaults.set("updateDelay", 50);
         defaults.set("doorHoldTime", 4000);
         defaults.set("saveInterval", 15);
-        defaults.set("doorBlock", "THIN_GLASS");
+        defaults.set("doorBlock", "GLASS_PANE");
         plugin = _plugin;
     }
 

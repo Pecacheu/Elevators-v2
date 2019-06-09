@@ -41,7 +41,7 @@ blockList:
   LEGACY_STAINED_GLASS: 5
   GLASS: 4
 
-doorBlock: 'LEGACY_THIN_GLASS' # Material used for elevator block-doors.
+doorBlock: 'GLASS_PANE' # Material used for elevator block-doors.
 
 # Stored elevator locations:
 
