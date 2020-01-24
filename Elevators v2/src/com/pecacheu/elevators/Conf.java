@@ -23,12 +23,18 @@ import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Directional;
+import org.bukkit.block.data.Openable;
+import org.bukkit.block.data.type.Door;
+import org.bukkit.block.data.type.Gate;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.MemoryConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Player;
+import org.bukkit.material.MaterialData;
 import org.bukkit.scheduler.BukkitTask;
 
 public class Conf {
@@ -37,12 +43,12 @@ public class Conf {
 	public static ChuList<ChuList<FallingBlock>> movingFloors = new ChuList<ChuList<FallingBlock>>();
 	public static BukkitTask CLTMR = null; public static Main plugin = null; public static boolean DISABLED = false;
 	public static final Object API_SYNC = new Object();
-	
+
 	//Global Config Settings:
 	public static String TITLE, CALL, ERROR, L_ST, L_END, NODOOR, MSG_GOTO_ST, MSG_GOTO_END, MSG_CALL, NOMV, M_ATLV, ATLV,
 	C_UP, UP, C_DOWN, DOWN; public static int RADIUS_MAX, MOVE_RES, DOOR_HOLD, SAVE_INT; public static ChuList<String> BLOCKS;
 	public static ChuList<Integer> BL_SPEED; public static Material DOOR_SET; public static boolean DEBUG = false;
-	
+
 	//Constants:
 	public static final String MSG_NEW_CONF = "§e[Elevators] §bCould not load config. Creating new config file...";
 	public static final String MSG_ERR_CONF = "§e[Elevators] §cError while loading config!";
@@ -53,7 +59,7 @@ public class Conf {
 	public static final String MSG_DEL_END = " §esaved elevators were deleted because they were invalid!";
 	public static final String CONFIG_PATH = "plugins/Elevators/config.yml";
 	public static final Material AIR = Material.AIR;
-	
+
 	public static MemoryConfiguration defaults = new MemoryConfiguration();
 	public static void initDefaults(Main _plugin) {
 		defaults.set("debug", false);
@@ -65,27 +71,27 @@ public class Conf {
 		defaults.set("callUp",   "&3▲  ▲  ▲  ▲  ▲  ▲"); defaults.set("up",       "&4△  △  △  △  △  △");
 		defaults.set("callDown", "&3▼  ▼  ▼  ▼  ▼  ▼"); defaults.set("down",     "&4▽  ▽  ▽  ▽  ▽  ▽");
 		defaults.set("floorMaxRadius", 8); defaults.set("updateDelay", 50); defaults.set("doorHoldTime", 4000);
-		defaults.set("saveInterval", 15); defaults.set("doorBlock", "THIN_GLASS"); plugin = _plugin;
+		defaults.set("saveInterval", 15); defaults.set("doorBlock", "GLASS_PANE"); plugin = _plugin;
 	}
-	
+
 	//------------------- Config Save & Load Functions -------------------
-	
+
 	public static boolean saveConfig() {
 		File path = new File(CONFIG_PATH); String data = "";
-		
+
 		//If Not Found, Create New Config File:
 		if(!path.exists()) data = newConfig(path); else {
 			try { //Read Current Config File:
 				FileReader file = new FileReader(path); int p = 0;
 				while(p < 3000) { int read = file.read(); if(read < 0 || read >= 65535) break; data += fromCharCode(read); p++; } file.close();
-			} catch (IOException e) { err("saveConfig", "IOException while reading file!"); return false; }
+			} catch(IOException e) { err("saveConfig", "IOException while reading file!"); return false; }
 		}
-		
+
 		if(data.length() == 0) { err("saveConfig", "Save data string empty!"); return false; }
-		
+
 		//Separate And Overwrite BLOCKS Section:
 		int bPos = data.lastIndexOf("blockList:"); String bStr = data.substring(bPos);
-		
+
 		int bEnd = 0, nl = 0; while(bEnd < 600) {
 			if(nl==1 && bStr.charAt(bEnd) != ' ') nl = 2;
 			if(nl==2) { if(bStr.charAt(bEnd) == '\n') break; }
@@ -110,7 +116,7 @@ public class Conf {
 		Writer file; try { file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(path), "UTF-8")); file.write(data); file.close(); }
 		catch (IOException e) { err("saveConfig", "IOException while saving file!"); return false; } return true;
 	}
-	
+
 	private static String newConfig(File file) {
 		Bukkit.getServer().getConsoleSender().sendMessage(MSG_NEW_CONF);
 		Path path = file.toPath(); try { java.nio.file.Files.createDirectories(path.getParent()); }
@@ -123,62 +129,62 @@ public class Conf {
 		if(pathFound) config = YamlConfiguration.loadConfiguration(path); else config = new YamlConfiguration();
 		
 		config.setDefaults(defaults); movingFloors = new ChuList<ChuList<FallingBlock>>(); CLTMR = null;
-		
-		//Load Global Settings:
-		DEBUG = config.getBoolean("debug");
-		TITLE = c(config.getString("title"));
-		CALL = c(config.getString("call"));
-		ERROR = c(config.getString("error"));
-		L_ST = c(config.getString("selStart"));
-		L_END = c(config.getString("selEnd"));
-		NODOOR = c(config.getString("noDoor"));
-		
-		MSG_GOTO_ST = c(config.getString("msgGotoStart"));
-		MSG_GOTO_END = c(config.getString("msgGotoEnd"));
-		MSG_CALL = c(config.getString("msgCall"));
-		
-		MSG_GOTO_ST = c(config.getString("msgGotoStart"));
-		MSG_GOTO_END = c(config.getString("msgGotoEnd"));
-		MSG_CALL = c(config.getString("msgCall"));
-		
-		NOMV = c(StringEscapeUtils.unescapeJava(config.getString("noMove")));
-		M_ATLV = c(StringEscapeUtils.unescapeJava(config.getString("mAtLevel")));
-		ATLV = c(StringEscapeUtils.unescapeJava(config.getString("atLevel")));
-		C_UP = c(StringEscapeUtils.unescapeJava(config.getString("callUp")));
-		UP = c(StringEscapeUtils.unescapeJava(config.getString("up")));
-		C_DOWN = c(StringEscapeUtils.unescapeJava(config.getString("callDown")));
-		DOWN = c(StringEscapeUtils.unescapeJava(config.getString("down")));
-		
-		RADIUS_MAX = config.getInt("floorMaxRadius");
-		MOVE_RES = config.getInt("updateDelay");
-		DOOR_HOLD = config.getInt("doorHoldTime");
-		SAVE_INT = config.getInt("saveInterval");
-		DOOR_SET = Material.valueOf(config.getString("doorBlock"));
-		
-		ConfigurationSection bList = config.getConfigurationSection("blockList");
-		BLOCKS = new ChuList<String>(); BL_SPEED = new ChuList<Integer>();
-		if(bList != null) {
-			Object[] bKeys = bList.getKeys(false).toArray();
-			for(int b=0,g=bKeys.length; b<g; b++) { //Remove any items from block list that aren't solid blocks:
-				Material mat = Material.valueOf((String)bKeys[b]);
-				if(mat != null && mat.isSolid()) { BLOCKS.push((String)bKeys[b]); BL_SPEED.push(bList.getInt((String)bKeys[b])); }
+
+			//Load Global Settings:
+			DEBUG = config.getBoolean("debug");
+			TITLE = c(config.getString("title"));
+			CALL = c(config.getString("call"));
+			ERROR = c(config.getString("error"));
+			L_ST = c(config.getString("selStart"));
+			L_END = c(config.getString("selEnd"));
+			NODOOR = c(config.getString("noDoor"));
+
+			MSG_GOTO_ST = c(config.getString("msgGotoStart"));
+			MSG_GOTO_END = c(config.getString("msgGotoEnd"));
+			MSG_CALL = c(config.getString("msgCall"));
+
+			MSG_GOTO_ST = c(config.getString("msgGotoStart"));
+			MSG_GOTO_END = c(config.getString("msgGotoEnd"));
+			MSG_CALL = c(config.getString("msgCall"));
+
+			NOMV = c(StringEscapeUtils.unescapeJava(config.getString("noMove")));
+			M_ATLV = c(StringEscapeUtils.unescapeJava(config.getString("mAtLevel")));
+			ATLV = c(StringEscapeUtils.unescapeJava(config.getString("atLevel")));
+			C_UP = c(StringEscapeUtils.unescapeJava(config.getString("callUp")));
+			UP = c(StringEscapeUtils.unescapeJava(config.getString("up")));
+			C_DOWN = c(StringEscapeUtils.unescapeJava(config.getString("callDown")));
+			DOWN = c(StringEscapeUtils.unescapeJava(config.getString("down")));
+
+			RADIUS_MAX = config.getInt("floorMaxRadius");
+			MOVE_RES = config.getInt("updateDelay");
+			DOOR_HOLD = config.getInt("doorHoldTime");
+			SAVE_INT = config.getInt("saveInterval");
+			DOOR_SET = Material.valueOf(config.getString("doorBlock"));
+
+			ConfigurationSection bList = config.getConfigurationSection("blockList");
+			BLOCKS = new ChuList<String>(); BL_SPEED = new ChuList<Integer>();
+			if(bList != null) {
+				Object[] bKeys = bList.getKeys(false).toArray();
+				for(int b=0,g=bKeys.length; b<g; b++) { //Remove any items from block list that aren't solid blocks:
+					Material mat = Material.valueOf((String)bKeys[b]);
+					if(mat != null && mat.isSolid()) { BLOCKS.push((String)bKeys[b]); BL_SPEED.push(bList.getInt((String)bKeys[b])); }
+				}
 			}
-		}
-		
-		if(BLOCKS.length < 1) { //Load Default Block Settings:
-			BLOCKS = new ChuList<String>("IRON_BLOCK", "GOLD_BLOCK", "EMERALD_BLOCK", "DIAMOND_BLOCK", "STAINED_GLASS", "GLASS");
-			BL_SPEED = new ChuList<Integer>(8, 10, 12, 15, 5, 4);
-		}
-		
-		//Load Compressed Elevator Data:
-		elevators.clear(); ConfigurationSection eList = config.getConfigurationSection("elevators"); Integer eCnt = 0;
+			
+			if(BLOCKS.length < 1) { //Load Default Block Settings:
+				BLOCKS = new ChuList<String>("IRON_BLOCK", "GOLD_BLOCK", "EMERALD_BLOCK", "DIAMOND_BLOCK", "STAINED_GLASS", "GLASS");
+				BL_SPEED = new ChuList<Integer>(8, 10, 12, 15, 5, 4);
+			}
+
+			//Load Compressed Elevator Data:
+			elevators.clear(); ConfigurationSection eList = config.getConfigurationSection("elevators"); Integer eCnt = 0;
 		if(eList != null) { Object[] eKeys = eList.getKeys(false).toArray(); for(int i=0,l=eKeys.length; i<l; i++) {
 			Elevator elev = Elevator.fromSaveData(eList.getStringList((String)eKeys[i]));
 			if(elev != null) elevators.put((String)eKeys[i], elev); else { eCnt++; err("loadConfig", "fromSaveData returned null at ID "+eKeys[i]); }
 		}}
 		return pathFound?eCnt:"NOCONF";
 	} catch(Exception e) { err("loadConfig", "Caught Exception: "+e.getMessage()); return e.getMessage(); }}
-	
+
 	public static void doConfigLoad(CommandSender sender) {
 		Object err = loadConfig();
 		if(err == "NOCONF") saveConfig(); //Create New Config.
@@ -194,9 +200,9 @@ public class Conf {
 		}
 		if(sender != null) sender.sendMessage("§aElevators Plugin Reloaded!");
 	} public static void doConfigLoad() { doConfigLoad(null); }
-	
+
 	//-------------------  Useful Functions -------------------
-	
+
 	public static String locToString(Location loc) {
 		return loc.getWorld().getName()+"-"+(int)loc.getX()+"-"+(int)loc.getZ();
 	}
@@ -226,65 +232,96 @@ public class Conf {
 	@SuppressWarnings("deprecation")
 	public static void setDoor(Block b, boolean onOff) {
 		if(Conf.isDoor(b) || Conf.isGate(b)) {
-			int dat = b.getData(); //Open/close door:
-			if(onOff && dat < 4) { b.setData((byte)(dat+4)); playDoorSound(b, onOff); }
-			else if(!onOff && dat >= 4) { b.setData((byte)(dat-4)); playDoorSound(b, onOff); }
+			//int dat = b.getData(); //Open/close door:
+			BlockData data = b.getBlockData();
+			Openable openable = (Openable) data;
+			openable.setOpen(onOff);
+			b.setBlockData(data);
+			playDoorSound(b, onOff);
+			b.getState().update();
+			/*if (onOff && dat < 4) {
+				blockData.setData((byte) (dat + 4));
+				playDoorSound(b, onOff);
+			} else if (!onOff && dat >= 4) {
+				blockData.setData((byte) (dat - 4));
+				playDoorSound(b, onOff);
+			}*/
 		}
 	}
-	
+
 	//Play door sound effect:
 	private static void playDoorSound(Block b, boolean open) {
 		Location l = b.getLocation();
-		if(Conf.isGate(b)) l.getWorld().playSound(l, open?Sound.BLOCK_FENCE_GATE_OPEN:Sound.BLOCK_FENCE_GATE_CLOSE, 1, 1);
-		else if(Conf.isWoodDoor(b)) l.getWorld().playSound(l, open?Sound.BLOCK_WOODEN_DOOR_OPEN:Sound.BLOCK_WOODEN_DOOR_CLOSE, 1, 1);
-		else l.getWorld().playSound(l, open?Sound.BLOCK_IRON_DOOR_OPEN:Sound.BLOCK_IRON_DOOR_CLOSE, 1, 1);
+		if (Conf.isGate(b))
+			l.getWorld().playSound(l, open ? Sound.BLOCK_FENCE_GATE_OPEN : Sound.BLOCK_FENCE_GATE_CLOSE, 1, 1);
+		else if (Conf.isWoodDoor(b))
+			l.getWorld().playSound(l, open ? Sound.BLOCK_WOODEN_DOOR_OPEN : Sound.BLOCK_WOODEN_DOOR_CLOSE, 1, 1);
+		else l.getWorld().playSound(l, open ? Sound.BLOCK_IRON_DOOR_OPEN : Sound.BLOCK_IRON_DOOR_CLOSE, 1, 1);
 	}
-	
+
 	//Set redstone power-state of powerable blocks:
 	public static void setPowered(Block block, boolean onOff) {
-		switch(block.getType()) {
+		switch (block.getType()) {
 			case REDSTONE_WIRE:
-			//if(onOff) block.setData((byte)15); else block.setData((byte)0);
-			break; case LEVER:
-			BlockState stL = block.getState(); ((org.bukkit.material
-			.Lever)stL.getData()).setPowered(onOff); stL.update();
-			break; case REDSTONE_TORCH_OFF:
-			//byte tDat = block.getData(); if(!onOff) { block.setType(Material.REDSTONE_TORCH_ON); block.setData(tDat); }
-			break; case REDSTONE_TORCH_ON:
-			//byte oDat = block.getData(); if(onOff) plugin.setInterval(new BukkitRunnable() { public void run() { if(CLTMR==null) this.cancel();
-			//else { BlockState st = block.getState(); st.setType(Material.REDSTONE_TORCH_OFF); st.setRawData(oDat); st.update(true); }}}, 0);
-			break; case REDSTONE_LAMP_ON:
-			//if(!onOff) block.setType(Material.REDSTONE_LAMP_OFF);
-			break; case REDSTONE_LAMP_OFF:
+				//if(onOff) block.setData((byte)15); else block.setData((byte)0);
+				break; case LEVER:
+				BlockState stL = block.getState(); ((org.bukkit.material
+				.Lever)stL.getData()).setPowered(onOff); stL.update();
+				break; case LEGACY_REDSTONE_TORCH_OFF:
+				//byte tDat = block.getData(); if(!onOff) { block.setType(Material.REDSTONE_TORCH_ON); block.setData(tDat); }
+				break; case LEGACY_REDSTONE_TORCH_ON:
+				//byte oDat = block.getData(); if(onOff) plugin.setInterval(new BukkitRunnable() { public void run() { if(CLTMR==null) this.cancel();
+				//else { BlockState st = block.getState(); st.setType(Material.REDSTONE_TORCH_OFF); st.setRawData(oDat); st.update(true); }}}, 0);
+				break; case LEGACY_REDSTONE_LAMP_ON:
+				//if(!onOff) block.setType(Material.REDSTONE_LAMP_OFF);
+				break; case LEGACY_REDSTONE_LAMP_OFF:
 			/*if(onOff) {
 				Block aBl = block.getWorld().getBlockAt(block.getX(), block.getY()+1, block.getZ()); Material bM = aBl.getType(); byte bD = aBl.getData();
 				BlockState aSt = aBl.getState(); aSt.setType(Material.REDSTONE_WIRE); aSt.setRawData((byte)15); aSt.update(true, false);
 				Bukkit.getServer().getPluginManager().callEvent(new org.bukkit.event.block.BlockRedstoneEvent(block, 15, 15));
 				plugin.setTimeout(() -> { BlockState bSt = aBl.getState(); bSt.setType(bM); bSt.setRawData(bD); bSt.update(true, false); }, 50);
 			}*/
-			//if(onOff) plugin.setInterval(new BukkitRunnable() { public void run() { if(CLTMR
-			//==null) this.cancel(); else block.setTypeId(REDSTONE_LAMP_ON); }}, 50);
-			break; /*case PISTON_BASE:
+				//if(onOff) plugin.setInterval(new BukkitRunnable() { public void run() { if(CLTMR
+				//==null) this.cancel(); else block.setTypeId(REDSTONE_LAMP_ON); }}, 50);
+				break; /*case PISTON_BASE:
 			BlockState stP = block.getState(); ((org.bukkit.material
 			.PistonBaseMaterial)stP.getData()).setPowered(onOff); stP.update();
-			break;*/ case COMMAND:
-			BlockState stC = block.getState(); ((org.bukkit.material
-			.Command)stC.getData()).setPowered(onOff); stC.update();
-			break; case DISPENSER:
-			if(onOff) { BlockState st = block.getState(); ((org
-			.bukkit.block.Dispenser)st).dispense(); st.update(); }
-			//Dispenser blD = (Dispenser)block; if(onOff) blD.dispense();
-			break; case DROPPER:
-			if(onOff) { BlockState st = block.getState(); ((org
-			.bukkit.block.Dropper)st).drop(); st.update(); }
-			//Dropper blR = (Dropper)block; if(onOff) blR.drop();
-			break; case HOPPER:
-			BlockState stH = block.getState(); ((org.bukkit.material
-			.Hopper)stH.getData()).setActive(!onOff); stH.update();
-			break; default: break;
+			break;*/
+			case LEGACY_COMMAND:
+				BlockState stC = block.getState();
+				((org.bukkit.material
+						.Command) stC.getData()).setPowered(onOff);
+				stC.update();
+				break;
+			case DISPENSER:
+				if (onOff) {
+					BlockState st = block.getState();
+					((org
+							.bukkit.block.Dispenser) st).dispense();
+					st.update();
+				}
+				//Dispenser blD = (Dispenser)block; if(onOff) blD.dispense();
+				break;
+			case DROPPER:
+				if (onOff) {
+					BlockState st = block.getState();
+					((org
+							.bukkit.block.Dropper) st).drop();
+					st.update();
+				}
+				//Dropper blR = (Dropper)block; if(onOff) blR.drop();
+				break;
+			case HOPPER:
+				BlockState stH = block.getState();
+				((org.bukkit.material
+						.Hopper) stH.getData()).setActive(!onOff);
+				stH.update();
+				break;
+			default:
+				break;
 		}
 	}
-	
+
 	//Write lines to sign:
 	public static void setSign(Block sign, String[] lines) {
 		org.bukkit.block.Sign state = ((org.bukkit.block.Sign)sign.getState());
@@ -296,39 +333,40 @@ public class Conf {
 		state.setLine(0, lineOne==null?TITLE:lineOne); state.setLine(1, "");
 		state.setLine(2, ""); state.setLine(3, ""); state.update();
 	}
-	
+
 	public static void setLine(Block sign, int l, String str) {
-		org.bukkit.block.Sign state = ((org.bukkit.block.Sign)sign.getState()); state.setLine(l, str==null?"":str); state.update(true);
+		org.bukkit.block.Sign state = ((org.bukkit.block.Sign) sign.getState());
+		state.setLine(l, str==null?"":str); state.update(true);
 	}
-	
+
 	//Read lines from sign:
 	public static String[] lines(Block sign) {
-		return ((org.bukkit.block.Sign)sign.getState()).getLines();
+		return ((org.bukkit.block.Sign) sign.getState()).getLines();
 	}
-	
+
 	//Get block sign is attached to:
 	public static Block getSignBlock(Block s, byte d) {
 		World w = s.getWorld(); int x = s.getX(), y = s.getY(), z = s.getZ();
 		switch(d) {
 			case 2: return w.getBlockAt(x,y,z+1); case 3: return w.getBlockAt(x,y,z-1);
 			case 4: return w.getBlockAt(x+1,y,z); case 5: return w.getBlockAt(x-1,y,z);
+			default: return null;
 		}
-		return null;
 	}
-	
+
 	//Ensure there is a solid block behind the sign.
 	public static void addSignBlock(Block s, byte d) {
 		Block b = Conf.getSignBlock(s,d); if(!b.getType().isSolid()) b.setType(Conf.DOOR_SET);
 	}
-	
+
 	//Determine if sign or call sign was clicked on:
 	public static boolean isElevSign(Block sign, ConfData ref, Player player, String perm) {
-		if(!hasPerm(player, perm)) return false; if(sign.getType() == Material.WALL_SIGN && TITLE.equals
+		if(!hasPerm(player, perm)) return false; if(sign.getType() == Material.OAK_WALL_SIGN && TITLE.equals
 		(lines(sign)[0])) { ref.data = Elevator.fromElevSign(sign); return (ref.data!=null); } return false;
 	}
 	
 	public static boolean isCallSign(Block sign, ConfData ref, Player player, String perm) {
-		if(!hasPerm(player, perm)) return false; if(sign.getType() == Material.WALL_SIGN && CALL.equals
+		if(!hasPerm(player, perm)) return false; if(sign.getType() == Material.OAK_WALL_SIGN && CALL.equals
 		(lines(sign)[0])) { ref.data = Elevator.fromCallSign(sign); return (ref.data!=null); } return false;
 	}
 	
@@ -357,7 +395,7 @@ public class Conf {
 			FileOutputStream(dest), "UTF-8")); file.write(str); file.close(); //<- Needed for Proper UTF-8 Encoding.
 		} catch (Exception e) { err("unpackFile", "Caught Exception: "+e.getMessage()); return ""; } return str;
 	}
-	
+
 	//Emulate JavaScript's fromCharCode Function:
 	public static String fromCharCode(int... codePoints) {
 		return new String(codePoints, 0, codePoints.length);

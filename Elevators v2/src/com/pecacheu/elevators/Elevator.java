@@ -1,5 +1,5 @@
 //This work is licensed under a GNU General Public License. Visit http://gnu.org/licenses/gpl-3.0-standalone.html for details.
-//Pecacheu's Elevator Plugin v2. Copyright (©) 2016, Pecacheu (Bryce Peterson, bbryce.com).
+//Pecacheu's Elevator Plugin v2. Copyright (ï¿½) 2016, Pecacheu (Bryce Peterson, bbryce.com).
 
 package com.pecacheu.elevators;
 
@@ -25,23 +25,25 @@ public class Elevator {
 	public ChuList<ChuList<Block>> csGroups;
 	public boolean noDoor = false, moveDir = false;
 	public ChuList<String> csData;
-	
+
 	//-- Initialization Functions:
-	
+
 	public Elevator(Floor _floor, ChuList<ChuList<Block>> _sGroups, ChuList<ChuList<Block>> _csGroups) {
 		floor = _floor; if(_sGroups==null) sGroups = new ChuList<ChuList<Block>>(); else sGroups = _sGroups;
 		if(_csGroups==null) csGroups = new ChuList<ChuList<Block>>(); else csGroups = _csGroups;
 		csData = new ChuList<String>();
 	}
-	
+
 	//Data Format: [World, Signs1 X, Signs1 Z, Signs2 X, Signs2 Z...]
 	public static Elevator fromSaveData(java.util.List<String> data) { //TODO World could be calculated from eID using locFromString().
 		if(data.size() < 3 || data.size() % 2 == 0) { Conf.err("fromSaveData", "Data length too small or not odd number."); return null; }
-		World w = Bukkit.getServer().getWorld(data.get(0)); if(w==null) { Conf.err("fromSaveData", "World '"+data.get(0)+"' does not exist!"); return null; }
+		World w = Bukkit.getServer().getWorld(data.get(0)); if(w==null) {
+			Conf.err("fromSaveData", "World '"+data.get(0)+"' does not exist!"); return null;
+		}
 		ChuList<ChuList<Block>> sGroups = new ChuList<ChuList<Block>>();
-		for(int i=1,l=data.size(); i<l; i+=2) {
-			int sX, sZ; try { sX = Integer.parseInt(data.get(i)); sZ = Integer.parseInt(data.get(i+1)); } catch
-			(NumberFormatException e) { Conf.err("fromSaveData", "Cannot convert position data to integer."); return null; }
+		for(int i=1,l=data.size(),sX,sZ; i<l; i+=2) {
+			try { sX = Integer.parseInt(data.get(i)); sZ = Integer.parseInt(data.get(i+1)); }
+			catch(NumberFormatException e) { Conf.err("fromSaveData", "Cannot convert position data to integer."); return null; }
 			ChuList<Block> sList = Elevator.rebuildSignList(w, sX, sZ);
 			if(sList.length!=0) sGroups.push(sList);
 		}
@@ -54,14 +56,16 @@ public class Elevator {
 		if(Conf.NODOOR.equals(Conf.lines(dSign)[2])) elev.noDoor = true; //Enable NoDoor Mode.
 		return elev;
 	}
-	
+
 	public ChuList<String> toSaveData() {
 		ChuList<String> data = new ChuList<String>(); data.push(floor.world.getName());
-		for(int i=0,l=sGroups.length; i<l; i++) { Block dSign = sGroups.get(i).get(0); data
-		.push(Integer.toString(dSign.getX())); data.push(Integer.toString(dSign.getZ())); }
+		for(int i=0,l=sGroups.length; i<l; i++) {
+			Block dSign = sGroups.get(i).get(0);
+			data.push(Integer.toString(dSign.getX())); data.push(Integer.toString(dSign.getZ()));
+		}
 		return data;
 	}
-	
+
 	//The names Bond. James Bond.
 	public void selfDestruct() {
 		if(floor != null && sGroups.length > 0 && sGroups.get(0).length > 0) { resetElevator(true); setDoors(sGroups.get(0).get(0).getY(), false); }
@@ -69,28 +73,28 @@ public class Elevator {
 		Object[] eKeys = Conf.elevators.keySet().toArray(); for(int s=0,v=eKeys.length; s<v; s++)
 		if(this.equals(Conf.elevators.get(eKeys[s]))) Conf.elevators.remove(eKeys[s]);
 	}
-	
+
 	public int yMin() { return sGroups.get(0).get(0).getY()-2; }
 	public int yMax() { return sGroups.get(0).get(sGroups.get(0).length-1).getY()+1; }
-	
+
 	//-- Rebuild Database Functions:
-	
+
 	//Locate elev signs at X,Z pos. Include Y pos for new sign detection.
 	public static ChuList<Block> rebuildSignList(Location loc) {
-		World w = loc.getWorld(); int sX = (int)loc.getX(), sZ = (int)loc.getZ(), bY = (int)loc.getY();
+		World w = loc.getWorld(); int sX=(int)loc.getX(), sZ=(int)loc.getZ(), bY=(int)loc.getY();
 		ChuList<Block> sList = new ChuList<Block>(); for(int h=0; h<256; h++) { //Increasing height:
-			Block bl = w.getBlockAt(sX, h, sZ); if(bl.getType() == Material.WALL_SIGN &&
-			(Conf.TITLE.equals(Conf.lines(bl)[0]) || (bY!=0 && h == bY))) sList.push(bl);
+			Block bl = w.getBlockAt(sX, h, sZ); if(bl.getType() == Material.OAK_WALL_SIGN
+			&& (Conf.TITLE.equals(Conf.lines(bl)[0]) || (bY!=0 && h == bY))) sList.push(bl);
 		} return sList;
 	} public static ChuList<Block> rebuildSignList(World w, int x, int z) { return rebuildSignList(new Location(w, x, 0, z)); }
-	
+
 	//Locate all call signs around elevator. Include newLoc for new sign detection.
 	public ChuList<ChuList<Block>> rebuildCallSignList(Location newLoc) {
 		ChuList<ChuList<Block>> csGroups = new ChuList<ChuList<Block>>(); ChuList<Block> sList = sGroups.get(0);
-		
-		Predicate<Block> checkSign = (bl) -> { return (bl.getType() == Material.WALL_SIGN && (Conf
-		.CALL.equals(Conf.lines(bl)[0]) || (newLoc!=null && bl.getLocation().equals(newLoc)))); };
-		
+		Predicate<Block> checkSign = (bl) -> {
+			return (bl.getType() == Material.OAK_WALL_SIGN && (Conf.CALL.equals(Conf.lines(bl)[0])
+			|| (newLoc!=null && bl.getLocation().equals(newLoc))));
+		};
 		for(int j=0,g=sList.length; j<g; j++) { //Iterate through levels:
 			csGroups.set(j, new ChuList<Block>()); //Scan perimeter for call signs:
 			int sY = sList.get(j).getY(), a; for(int dXZ=0; dXZ<4; dXZ++) {
@@ -102,9 +106,9 @@ public class Elevator {
 			}
 		} return csGroups;
 	} public ChuList<ChuList<Block>> rebuildCallSignList() { return rebuildCallSignList(null); }
-	
+
 	//-- Find Elevator Functions:
-	
+
 	//Get elevator for elev sign, if any.
 	public static Elevator fromElevSign(Block sign) {
 		World sW = sign.getWorld(); int sX = sign.getX(), sZ = sign.getZ();
@@ -114,7 +118,7 @@ public class Elevator {
 			if(fl.world.equals(sW) && (sX >= fl.xMin && sX <= fl.xMax) && (sZ >= fl.zMin && sZ <= fl.zMax)) return elev;
 		} Conf.err("fromElevSign", "Elevator not detected for sign: "+sign); return null;
 	}
-	
+
 	//Get elevator for call sign, if any.
 	public static CSData fromCallSign(Block sign) {
 		int x = sign.getX(), y = sign.getY(), z = sign.getZ(); Object[] eKeys = Conf.elevators.keySet().toArray();
@@ -130,7 +134,7 @@ public class Elevator {
 			}
 		} Conf.err("fromCallSign", "Elevator not detected for sign: "+sign); return null;
 	}
-	
+
 	//Get elevator for block, if any.
 	public static Elevator fromElevBlock(Block bl) {
 		World w = bl.getWorld(); Material t = bl.getType(); boolean d = (t == Conf.DOOR_SET);
@@ -203,34 +207,34 @@ public class Elevator {
 		}
 	} public void updateCallSigns(double fLvl, int fDir) { updateCallSigns(fLvl, fDir, 0); }
 	public void updateCallSigns(double fLvl) { updateCallSigns(fLvl, 0, 0); }
-	
+
 	//Update floor name on all elev signs.
 	public void updateFloorName(String flName) {
 		String nFloor = Conf.L_ST+flName+Conf.L_END;
 		for(int k=0,m=sGroups.length; k<m; k++) for(int f=0,d=sGroups.get(k)
 		.length; f<d; f++) Conf.setLine(sGroups.get(k).get(f), 1, nFloor);
 	}
-	
+
 	public void doorTimer(int level) {
 		setDoors(level, true); if(Conf.CLTMR != null) Conf.CLTMR.cancel();
 		Conf.CLTMR = Conf.plugin.setTimeout(() -> {
 			setDoors(level, false); Conf.CLTMR = null;
 		}, Conf.DOOR_HOLD);
 	}
-	
+
 	//-- Utility Functions:
-	
+
 	//Remove all blocks in elevator:
 	public void resetElevator(boolean noFloor) {
 		int yMin = this.yMin(), yMax = this.yMax();
 		World world = floor.world;
 		for(int y=yMin; y<yMax; y++) for(int x=floor.xMin; x<floor.xMax+1; x++) for(int z=floor.zMin; z<floor.zMax+1; z++) {
 			Block bl = world.getBlockAt(x, y, z); if(y == yMin && !noFloor) bl.setType(floor.fType);
-			else if(bl.getType() != Material.WALL_SIGN || (Conf.TITLE.equals(Conf.lines(bl)[0]) && !isKnownSign(bl))) //TODO Check if it works.
+			else if(bl.getType() != Material.OAK_WALL_SIGN || (Conf.TITLE.equals(Conf.lines(bl)[0]) && !isKnownSign(bl)))
 			{BlockState s=bl.getState();s.setType(Conf.AIR);s.update(true);}
 		}
 	} public void resetElevator() { resetElevator(false); }
-	
+
 	//Check if sign is a registered 'elevator' sign:
 	public boolean isKnownSign(Block sign) {
 		for(int i=0,l=sGroups.length; i<l; i++) for(int k=0,b=sGroups.get(i).length; k<b;
@@ -261,7 +265,7 @@ public class Elevator {
 			}
 		}
 	}
-	
+
 	//Remove block doors.
 	public void remBlockDoor(int h) {
 		Floor fl = floor; Consumer<Block> remBDoor = (bl) -> { if(bl.getType() == Conf.DOOR_SET) bl.setType(Conf.AIR); };
@@ -272,7 +276,7 @@ public class Elevator {
 			for(int zP=fl.zMax; zP>fl.zMin-2; zP--) remBDoor.accept(w.getBlockAt(fl.xMin-1, yP, zP));
 		}
 	}
-	
+
 	//Turn on/off gravity and adjust height of all entities in elevator:
 	public void setEntities(boolean gravity, double delta, double hCheck, boolean resetVel) {
 		World world = floor.world; int yMin = this.yMin(), yMax = this.yMax();

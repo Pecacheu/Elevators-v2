@@ -2,6 +2,7 @@ main: com.pecacheu.elevators.Main
 name: Elevators_v2
 version: 3.1.2
 author: Pecacheu
+api-version: 1.14
 description: Adds Working Elevators to Minecraft!
 commands:
   elev:
