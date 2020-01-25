@@ -1,5 +1,4 @@
-//This work is licensed under a GNU General Public License. Visit http://gnu.org/licenses/gpl-3.0-standalone.html for details.
-//Pecacheu's Elevator Plugin v2. Copyright (�) 2016, Pecacheu (Bryce Peterson, bbryce.com).
+//Elevators v2, ©2020 Pecacheu. Licensed under GNU GPL 3.0
 
 package com.pecacheu.elevators;
 
@@ -13,7 +12,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockState;
+import org.bukkit.block.data.type.*;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -25,15 +24,15 @@ public class Elevator {
 	public ChuList<ChuList<Block>> csGroups;
 	public boolean noDoor = false, moveDir = false;
 	public ChuList<String> csData;
-
+	
 	//-- Initialization Functions:
-
+	
 	public Elevator(Floor _floor, ChuList<ChuList<Block>> _sGroups, ChuList<ChuList<Block>> _csGroups) {
 		floor = _floor; if(_sGroups==null) sGroups = new ChuList<ChuList<Block>>(); else sGroups = _sGroups;
 		if(_csGroups==null) csGroups = new ChuList<ChuList<Block>>(); else csGroups = _csGroups;
 		csData = new ChuList<String>();
 	}
-
+	
 	//Data Format: [World, Signs1 X, Signs1 Z, Signs2 X, Signs2 Z...]
 	public static Elevator fromSaveData(java.util.List<String> data) { //TODO World could be calculated from eID using locFromString().
 		if(data.size() < 3 || data.size() % 2 == 0) { Conf.err("fromSaveData", "Data length too small or not odd number."); return null; }
@@ -56,7 +55,7 @@ public class Elevator {
 		if(Conf.NODOOR.equals(Conf.lines(dSign)[2])) elev.noDoor = true; //Enable NoDoor Mode.
 		return elev;
 	}
-
+	
 	public ChuList<String> toSaveData() {
 		ChuList<String> data = new ChuList<String>(); data.push(floor.world.getName());
 		for(int i=0,l=sGroups.length; i<l; i++) {
@@ -65,7 +64,7 @@ public class Elevator {
 		}
 		return data;
 	}
-
+	
 	//The names Bond. James Bond.
 	public void selfDestruct() {
 		if(floor != null && sGroups.length > 0 && sGroups.get(0).length > 0) { resetElevator(true); setDoors(sGroups.get(0).get(0).getY(), false); }
@@ -73,26 +72,26 @@ public class Elevator {
 		Object[] eKeys = Conf.elevators.keySet().toArray(); for(int s=0,v=eKeys.length; s<v; s++)
 		if(this.equals(Conf.elevators.get(eKeys[s]))) Conf.elevators.remove(eKeys[s]);
 	}
-
+	
 	public int yMin() { return sGroups.get(0).get(0).getY()-2; }
 	public int yMax() { return sGroups.get(0).get(sGroups.get(0).length-1).getY()+1; }
-
+	
 	//-- Rebuild Database Functions:
-
+	
 	//Locate elev signs at X,Z pos. Include Y pos for new sign detection.
 	public static ChuList<Block> rebuildSignList(Location loc) {
 		World w = loc.getWorld(); int sX=(int)loc.getX(), sZ=(int)loc.getZ(), bY=(int)loc.getY();
 		ChuList<Block> sList = new ChuList<Block>(); for(int h=0; h<256; h++) { //Increasing height:
-			Block bl = w.getBlockAt(sX, h, sZ); if(bl.getType() == Material.OAK_WALL_SIGN
+			Block bl = w.getBlockAt(sX, h, sZ); if(bl.getBlockData() instanceof WallSign
 			&& (Conf.TITLE.equals(Conf.lines(bl)[0]) || (bY!=0 && h == bY))) sList.push(bl);
 		} return sList;
 	} public static ChuList<Block> rebuildSignList(World w, int x, int z) { return rebuildSignList(new Location(w, x, 0, z)); }
-
+	
 	//Locate all call signs around elevator. Include newLoc for new sign detection.
 	public ChuList<ChuList<Block>> rebuildCallSignList(Location newLoc) {
 		ChuList<ChuList<Block>> csGroups = new ChuList<ChuList<Block>>(); ChuList<Block> sList = sGroups.get(0);
 		Predicate<Block> checkSign = (bl) -> {
-			return (bl.getType() == Material.OAK_WALL_SIGN && (Conf.CALL.equals(Conf.lines(bl)[0])
+			return (bl.getBlockData() instanceof WallSign && (Conf.CALL.equals(Conf.lines(bl)[0])
 			|| (newLoc!=null && bl.getLocation().equals(newLoc))));
 		};
 		for(int j=0,g=sList.length; j<g; j++) { //Iterate through levels:
@@ -106,9 +105,9 @@ public class Elevator {
 			}
 		} return csGroups;
 	} public ChuList<ChuList<Block>> rebuildCallSignList() { return rebuildCallSignList(null); }
-
+	
 	//-- Find Elevator Functions:
-
+	
 	//Get elevator for elev sign, if any.
 	public static Elevator fromElevSign(Block sign) {
 		World sW = sign.getWorld(); int sX = sign.getX(), sZ = sign.getZ();
@@ -118,7 +117,7 @@ public class Elevator {
 			if(fl.world.equals(sW) && (sX >= fl.xMin && sX <= fl.xMax) && (sZ >= fl.zMin && sZ <= fl.zMax)) return elev;
 		} Conf.err("fromElevSign", "Elevator not detected for sign: "+sign); return null;
 	}
-
+	
 	//Get elevator for call sign, if any.
 	public static CSData fromCallSign(Block sign) {
 		int x = sign.getX(), y = sign.getY(), z = sign.getZ(); Object[] eKeys = Conf.elevators.keySet().toArray();
@@ -134,7 +133,7 @@ public class Elevator {
 			}
 		} Conf.err("fromCallSign", "Elevator not detected for sign: "+sign); return null;
 	}
-
+	
 	//Get elevator for block, if any.
 	public static Elevator fromElevBlock(Block bl) {
 		World w = bl.getWorld(); Material t = bl.getType(); boolean d = (t == Conf.DOOR_SET);
@@ -189,7 +188,7 @@ public class Elevator {
 	
 	//Update all elevator call signs.
 	//fLvl: Current elevator height, fDir: Direction (or set to 2 for doors-closed but not moving), sNum: Destination floor, if any.
-	public void updateCallSigns(double fLvl, int fDir, int sNum) { //TODO Make level detection work better.
+	public void updateCallSigns(double fLvl, int fDir, int sNum) {
 		ChuList<Block> sList = sGroups.get(0); boolean locked = floor.moving;
 		ChuList<String> csInd = new ChuList<String>(sList.length);
 		for(int m=0,k=sList.length,fNum=-1; m<k; m++) { //Iterate through floors:
@@ -207,34 +206,32 @@ public class Elevator {
 		}
 	} public void updateCallSigns(double fLvl, int fDir) { updateCallSigns(fLvl, fDir, 0); }
 	public void updateCallSigns(double fLvl) { updateCallSigns(fLvl, 0, 0); }
-
+	
 	//Update floor name on all elev signs.
 	public void updateFloorName(String flName) {
 		String nFloor = Conf.L_ST+flName+Conf.L_END;
 		for(int k=0,m=sGroups.length; k<m; k++) for(int f=0,d=sGroups.get(k)
 		.length; f<d; f++) Conf.setLine(sGroups.get(k).get(f), 1, nFloor);
 	}
-
+	
 	public void doorTimer(int level) {
 		setDoors(level, true); if(Conf.CLTMR != null) Conf.CLTMR.cancel();
 		Conf.CLTMR = Conf.plugin.setTimeout(() -> {
 			setDoors(level, false); Conf.CLTMR = null;
 		}, Conf.DOOR_HOLD);
 	}
-
+	
 	//-- Utility Functions:
-
+	
 	//Remove all blocks in elevator:
 	public void resetElevator(boolean noFloor) {
-		int yMin = this.yMin(), yMax = this.yMax();
-		World world = floor.world;
+		int yMin = this.yMin(), yMax = this.yMax(); World world = floor.world;
 		for(int y=yMin; y<yMax; y++) for(int x=floor.xMin; x<floor.xMax+1; x++) for(int z=floor.zMin; z<floor.zMax+1; z++) {
-			Block bl = world.getBlockAt(x, y, z); if(y == yMin && !noFloor) bl.setType(floor.fType);
-			else if(bl.getType() != Material.OAK_WALL_SIGN || (Conf.TITLE.equals(Conf.lines(bl)[0]) && !isKnownSign(bl)))
-			{BlockState s=bl.getState();s.setType(Conf.AIR);s.update(true);}
+			Block bl = world.getBlockAt(x,y,z); if(y == yMin && !noFloor) bl.setType(floor.fType);
+			else if(!(bl.getBlockData() instanceof WallSign) || (Conf.TITLE.equals(Conf.lines(bl)[0]) && !isKnownSign(bl))) bl.setType(Conf.AIR);
 		}
 	} public void resetElevator() { resetElevator(false); }
-
+	
 	//Check if sign is a registered 'elevator' sign:
 	public boolean isKnownSign(Block sign) {
 		for(int i=0,l=sGroups.length; i<l; i++) for(int k=0,b=sGroups.get(i).length; k<b;
@@ -243,29 +240,31 @@ public class Elevator {
 	}
 	
 	//Open/close elevator doors.
-	public void setDoors(int h, boolean onOff) {
+	public void setDoors(int h, boolean on) {
 		Floor fl = floor; BiPredicate<Integer,Integer> isCorner = (x,z) -> { return ((fl.xMax+1-fl.xMin<=2) ? (x < fl.xMin || x > fl.xMax)
 		: (x <= fl.xMin || x >= fl.xMax)) && ((fl.zMax+1-fl.zMin<=2) ? (z < fl.zMin || z > fl.zMax) : (z <= fl.zMin || z >= fl.zMax)); };
 		//Open/Close Barrier-Doors:
-		Consumer<Block> setBDoor = (bl) -> { if(isCorner.test(bl.getX(),bl.getZ())) { if(bl.getType() == Conf.AIR) bl.setType
-		(Conf.DOOR_SET); } else if(bl.getType() == (onOff?Conf.DOOR_SET:Conf.AIR)) bl.setType(onOff?Conf.AIR:Conf.DOOR_SET); };
+		Consumer<Block> setBDoor = (bl) -> {
+			if(isCorner.test(bl.getX(),bl.getZ())) { if(bl.getType() == Conf.AIR) Conf.setDoorBlock(bl, true); }
+			else if(bl.getType() == (on?Conf.DOOR_SET:Conf.AIR)) Conf.setDoorBlock(bl, !on);
+		};
 		//Cycle Around Elevator Perimeter:
 		World w = fl.world; for(int yP=h-1; yP<=h+1; yP++) {
-			for(int xP=fl.xMin; xP<fl.xMax+2; xP++) { Block bl = w.getBlockAt(xP, yP, fl.zMin-1); if(!noDoor) setBDoor.accept(bl); Conf.setDoor(bl, onOff); }
-			for(int zP=fl.zMin; zP<fl.zMax+2; zP++) { Block bl = w.getBlockAt(fl.xMax+1, yP, zP); if(!noDoor) setBDoor.accept(bl); Conf.setDoor(bl, onOff); }
-			for(int xP=fl.xMax; xP>fl.xMin-2; xP--) { Block bl = w.getBlockAt(xP, yP, fl.zMax+1); if(!noDoor) setBDoor.accept(bl); Conf.setDoor(bl, onOff); }
-			for(int zP=fl.zMax; zP>fl.zMin-2; zP--) { Block bl = w.getBlockAt(fl.xMin-1, yP, zP); if(!noDoor) setBDoor.accept(bl); Conf.setDoor(bl, onOff); }
+			for(int xP=fl.xMin; xP<fl.xMax+2; xP++) { Block bl = w.getBlockAt(xP, yP, fl.zMin-1); if(!noDoor) setBDoor.accept(bl); Conf.setDoor(bl,on); }
+			for(int zP=fl.zMin; zP<fl.zMax+2; zP++) { Block bl = w.getBlockAt(fl.xMax+1, yP, zP); if(!noDoor) setBDoor.accept(bl); Conf.setDoor(bl,on); }
+			for(int xP=fl.xMax; xP>fl.xMin-2; xP--) { Block bl = w.getBlockAt(xP, yP, fl.zMax+1); if(!noDoor) setBDoor.accept(bl); Conf.setDoor(bl,on); }
+			for(int zP=fl.zMax; zP>fl.zMin-2; zP--) { Block bl = w.getBlockAt(fl.xMin-1, yP, zP); if(!noDoor) setBDoor.accept(bl); Conf.setDoor(bl,on); }
 		}
 		if(noDoor) {
 			int fNum = -1; for(int q=0,m=sGroups.get(0).length; q<m; q++) if(h == sGroups.get(0).get(q).getY()) { fNum = q; break; } //Get level number.
 			if(fNum != -1 && csGroups.get(fNum) != null) for(int a=0,b=csGroups.get(fNum).length; a<b; a++) { //Power Call Signs:
 				Block sign = csGroups.get(fNum).get(a); int sX=sign.getX(), sY=sign.getY(), sZ=sign.getZ(); //Power Nearby Redstone Equipment:
 				for(int x=sX-1,mX=sX+1; x<=mX; x++) for(int y=sY-1,mY=sY+1; y<=mY; y++) for(int z=sZ-1,mZ=sZ+1;
-				z<=mZ; z++) if(x!=sX || y!=sY || z!=sZ) Conf.setPowered(w.getBlockAt(x, y, z), onOff);
+				z<=mZ; z++) if(x!=sX || y!=sY || z!=sZ) Conf.setPowered(w.getBlockAt(x, y, z), on);
 			}
 		}
 	}
-
+	
 	//Remove block doors.
 	public void remBlockDoor(int h) {
 		Floor fl = floor; Consumer<Block> remBDoor = (bl) -> { if(bl.getType() == Conf.DOOR_SET) bl.setType(Conf.AIR); };
@@ -276,7 +275,7 @@ public class Elevator {
 			for(int zP=fl.zMax; zP>fl.zMin-2; zP--) remBDoor.accept(w.getBlockAt(fl.xMin-1, yP, zP));
 		}
 	}
-
+	
 	//Turn on/off gravity and adjust height of all entities in elevator:
 	public void setEntities(boolean gravity, double delta, double hCheck, boolean resetVel) {
 		World world = floor.world; int yMin = this.yMin(), yMax = this.yMax();
@@ -309,7 +308,7 @@ public class Elevator {
 		for(int i=0,l=sGroups.get(0).length; i<l; i++) setDoors(sGroups.get(0).get(i).getY(), false);
 		updateCallSigns(fLevel, 2); floor.moving = true;
 		
-		Conf.dbg("FROM: "+fLevel+", TO: "+sLevel+"(#"+selNum+"), STEP: "+step);
+		Conf.dbg("FROM: "+fLevel+", TO: "+sLevel+" ("+selNum+"), STEP: "+step);
 		
 		Conf.plugin.setTimeout(() -> {
 			int fID = floor.addFloor(fLevel, true); GotoTimer timer = new GotoTimer();
@@ -328,12 +327,15 @@ class GotoTimer extends BukkitRunnable {
 	}
 	
 	public void run() { synchronized(Conf.API_SYNC) {
-		elev.floor.moveFloor(fID, fPos); elev.updateCallSigns(fPos, elev.moveDir?1:0, selNum); elev.setEntities(false, accel, fPos, false);
-		
+		elev.floor.moveFloor(fID, fPos); elev.updateCallSigns(fPos, elev.moveDir?1:0, selNum);
+		elev.setEntities(false, accel, fPos, false);
 		if(elev.moveDir?(fPos >= sLevel):(fPos <= sLevel)) { //At destination floor:
-			this.cancel(); elev.floor.deleteFloor(fID); elev.floor.addFloor(sLevel, false); //Restore solid floor.
-			plugin.setTimeout(() -> { elev.floor.addFloor(sLevel, false); elev.setEntities(true, sLevel, true); }, 50); //Set floor again, just to be sure.
-			elev.updateCallSigns(sLevel+2); plugin.setTimeout(() -> { elev.floor.moving = false; elev.updateCallSigns(sLevel+2); elev.doorTimer(sLevel+2); }, 500);
+			this.cancel(); elev.floor.deleteFloor(fID); plugin.setTimeout(() -> {
+				elev.floor.addFloor(sLevel, false); elev.setEntities(true, sLevel, true); //Restore solid floor.
+				elev.updateCallSigns(sLevel+2); plugin.setTimeout(() -> {
+					elev.floor.moving = false; elev.updateCallSigns(sLevel+2); elev.doorTimer(sLevel+2);
+				}, 500);
+			}, 50);
 		} else fPos += step;
 	}}
 }
