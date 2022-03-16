@@ -24,6 +24,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Sign;
 import org.bukkit.block.data.Bisected;
+import org.bukkit.block.data.MultipleFacing;
 import org.bukkit.block.data.Openable;
 import org.bukkit.block.data.type.*;
 import org.bukkit.command.CommandSender;
@@ -282,7 +283,17 @@ public static Block getSignBlock(Block s) {
 public static void addSignBlock(Block s) {
 	Block b = Conf.getSignBlock(s); if(!b.getType().isSolid()) setDoorBlock(b,true);
 }
-public static void setDoorBlock(Block b, boolean on) { b.setType(on?Conf.DOOR_SET:Conf.AIR); }
+public static void setDoorBlock(Block b, boolean on) {
+	b.setType(on?Conf.DOOR_SET:Conf.AIR);
+	if(on && b.getBlockData() instanceof MultipleFacing) { //Connect block faces
+		MultipleFacing f=(MultipleFacing)b.getBlockData(); Location l=b.getLocation();
+		f.setFace(BlockFace.EAST, !l.clone().add(1,0,0).getBlock().isEmpty());
+		f.setFace(BlockFace.WEST, !l.clone().add(-1,0,0).getBlock().isEmpty());
+		f.setFace(BlockFace.NORTH, !l.clone().add(0,0,-1).getBlock().isEmpty());
+		f.setFace(BlockFace.SOUTH, !l.clone().add(0,0,1).getBlock().isEmpty());
+		b.setBlockData(f);
+	}
+}
 
 //Determine if sign or call sign was clicked on:
 public static boolean isElevSign(Block b, ConfData ref, Player pl, String perm) {
