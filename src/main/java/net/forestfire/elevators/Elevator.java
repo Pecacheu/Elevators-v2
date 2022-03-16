@@ -28,9 +28,9 @@ public ChuList<String> csData;
 //-- Initialization Functions:
 
 public Elevator(Floor _floor, ChuList<ChuList<Block>> _sGroups, ChuList<ChuList<Block>> _csGroups) {
-	floor = _floor; if(_sGroups==null) sGroups = new ChuList<ChuList<Block>>(); else sGroups = _sGroups;
-	if(_csGroups==null) csGroups = new ChuList<ChuList<Block>>(); else csGroups = _csGroups;
-	csData = new ChuList<String>();
+	floor = _floor; if(_sGroups==null) sGroups = new ChuList<>(); else sGroups = _sGroups;
+	if(_csGroups==null) csGroups = new ChuList<>(); else csGroups = _csGroups;
+	csData = new ChuList<>();
 }
 
 //Data Format: [World, Signs1 X, Signs1 Z, Signs2 X, Signs2 Z...]
@@ -39,7 +39,7 @@ public static Elevator fromSaveData(java.util.List<String> data) { //TODO World 
 	World w = Bukkit.getServer().getWorld(data.get(0)); if(w==null) {
 		Conf.err("fromSaveData", "World '"+data.get(0)+"' does not exist!"); return null;
 	}
-	ChuList<ChuList<Block>> sGroups = new ChuList<ChuList<Block>>();
+	ChuList<ChuList<Block>> sGroups = new ChuList<>();
 	for(int i=1,l=data.size(),sX,sZ; i<l; i+=2) {
 		try { sX = Integer.parseInt(data.get(i)); sZ = Integer.parseInt(data.get(i+1)); }
 		catch(NumberFormatException e) { Conf.err("fromSaveData", "Cannot convert position data to integer."); return null; }
@@ -57,7 +57,7 @@ public static Elevator fromSaveData(java.util.List<String> data) { //TODO World 
 }
 
 public ChuList<String> toSaveData() {
-	ChuList<String> data = new ChuList<String>(); data.push(floor.world.getName());
+	ChuList<String> data = new ChuList<>(); data.push(floor.world.getName());
 	for(int i=0,l=sGroups.length; i<l; i++) {
 		Block dSign = sGroups.get(i).get(0);
 		data.push(Integer.toString(dSign.getX())); data.push(Integer.toString(dSign.getZ()));
@@ -81,7 +81,7 @@ public int yMax() { return sGroups.get(0).get(sGroups.get(0).length-1).getY()+1;
 //Locate elev signs at X,Z pos. Include Y pos for new sign detection.
 public static ChuList<Block> rebuildSignList(Location loc) {
 	World w = loc.getWorld(); int sX=(int)loc.getX(), sZ=(int)loc.getZ(), bY=(int)loc.getY();
-	ChuList<Block> sList = new ChuList<Block>(); for(int h=0; h<256; h++) { //Increasing height:
+	ChuList<Block> sList = new ChuList<>(); for(int h=0; h<256; h++) { //Increasing height:
 		Block bl = w.getBlockAt(sX, h, sZ); if(bl.getBlockData() instanceof WallSign
 				&& (Conf.TITLE.equals(Conf.lines(bl)[0]) || (bY!=0 && h == bY))) sList.push(bl);
 	} return sList;
@@ -89,13 +89,13 @@ public static ChuList<Block> rebuildSignList(Location loc) {
 
 //Locate all call signs around elevator. Include newLoc for new sign detection.
 public ChuList<ChuList<Block>> rebuildCallSignList(Location newLoc) {
-	ChuList<ChuList<Block>> csGroups = new ChuList<ChuList<Block>>(); ChuList<Block> sList = sGroups.get(0);
+	ChuList<ChuList<Block>> csGroups = new ChuList<>(); ChuList<Block> sList = sGroups.get(0);
 	Predicate<Block> checkSign = (bl) -> {
 		return (bl.getBlockData() instanceof WallSign && (Conf.CALL.equals(Conf.lines(bl)[0])
 				|| (newLoc!=null && bl.getLocation().equals(newLoc))));
 	};
 	for(int j=0,g=sList.length; j<g; j++) { //Iterate through levels:
-		csGroups.set(j, new ChuList<Block>()); //Scan perimeter for call signs:
+		csGroups.set(j, new ChuList<>()); //Scan perimeter for call signs:
 		int sY = sList.get(j).getY(), a; for(int dXZ=0; dXZ<4; dXZ++) {
 			a = (dXZ==0?0:1);
 			for(int xP=floor.xMin-a; xP<floor.xMax+2; xP++) { Block bl = floor.world.getBlockAt(xP, sY, floor.zMin-1-dXZ); if(checkSign.test(bl)) csGroups.get(j).push(bl); }
@@ -182,7 +182,7 @@ public static Elevator fromDoor(Location loc) {
 public int getLevel(boolean noTypeCheck) {
 	ChuList<Block> sList = sGroups.get(0); World world = sList.get(0).getWorld(); int xPos = sList.get(0).getX(), zPos = sList.get(0).getZ();
 	for(int y=yMin(),l=yMax(); y<l; y++) { Block bl = world.getBlockAt(xPos, y, zPos);
-		if(noTypeCheck ? (Conf.BLOCKS.indexOf(bl.getType().toString()) != -1) : (bl.getType() == floor.fType)) return bl.getY();
+		if(noTypeCheck ? (Conf.BLOCKS.contains(bl.getType().toString())) : (bl.getType() == floor.fType)) return bl.getY();
 	} Conf.err("getLevel", "Could not determine floor height! Returning ground floor at "+yMin()); return yMin();
 } public int getLevel() { return getLevel(false); }
 
@@ -190,7 +190,7 @@ public int getLevel(boolean noTypeCheck) {
 //fLvl: Current elevator height, fDir: Direction (or set to 2 for doors-closed but not moving), sNum: Destination floor, if any.
 public void updateCallSigns(double fLvl, int fDir, int sNum) {
 	ChuList<Block> sList = sGroups.get(0); boolean locked = floor.moving;
-	ChuList<String> csInd = new ChuList<String>(sList.length);
+	ChuList<String> csInd = new ChuList<>(sList.length);
 	for(int m=0,k=sList.length,fNum=-1; m<k; m++) { //Iterate through floors:
 		String ind = Conf.NOMV; if(fNum == -1 && sList.get(m).getY() >= fLvl) fNum = m; //Get level from floor height.
 		if(m == fNum) ind = (fDir==2||locked) ? Conf.M_ATLV : Conf.ATLV; //Elevator is on level.
@@ -241,8 +241,8 @@ public boolean isKnownSign(Block sign) {
 
 //Open/close elevator doors.
 public void setDoors(int h, boolean on) {
-	Floor fl = floor; BiPredicate<Integer,Integer> isCorner = (x,z) -> { return ((fl.xMax+1-fl.xMin<=2) ? (x < fl.xMin || x > fl.xMax)
-			: (x <= fl.xMin || x >= fl.xMax)) && ((fl.zMax+1-fl.zMin<=2) ? (z < fl.zMin || z > fl.zMax) : (z <= fl.zMin || z >= fl.zMax)); };
+	Floor fl = floor; BiPredicate<Integer,Integer> isCorner = (x,z) -> ((fl.xMax+1-fl.xMin<=2) ? (x < fl.xMin || x > fl.xMax)
+			: (x <= fl.xMin || x >= fl.xMax)) && ((fl.zMax+1-fl.zMin<=2) ? (z < fl.zMin || z > fl.zMax) : (z <= fl.zMin || z >= fl.zMax));
 	//Open/Close Barrier-Doors:
 	Consumer<Block> setBDoor = (bl) -> {
 		if(isCorner.test(bl.getX(),bl.getZ())) { if(bl.getType() == Conf.AIR) Conf.setDoorBlock(bl, true); }
@@ -255,13 +255,11 @@ public void setDoors(int h, boolean on) {
 		for(int xP=fl.xMax; xP>fl.xMin-2; xP--) { Block bl = w.getBlockAt(xP, yP, fl.zMax+1); if(!noDoor) setBDoor.accept(bl); Conf.setDoor(bl,on); }
 		for(int zP=fl.zMax; zP>fl.zMin-2; zP--) { Block bl = w.getBlockAt(fl.xMin-1, yP, zP); if(!noDoor) setBDoor.accept(bl); Conf.setDoor(bl,on); }
 	}
-	if(noDoor) {
-		int fNum = -1; for(int q=0,m=sGroups.get(0).length; q<m; q++) if(h == sGroups.get(0).get(q).getY()) { fNum = q; break; } //Get level number.
-		if(fNum != -1 && csGroups.get(fNum) != null) for(int a=0,b=csGroups.get(fNum).length; a<b; a++) { //Power Call Signs:
-			Block sign = csGroups.get(fNum).get(a); int sX=sign.getX(), sY=sign.getY(), sZ=sign.getZ(); //Power Nearby Redstone Equipment:
-			for(int x=sX-1,mX=sX+1; x<=mX; x++) for(int y=sY-1,mY=sY+1; y<=mY; y++) for(int z=sZ-1,mZ=sZ+1;
-																						z<=mZ; z++) if(x!=sX || y!=sY || z!=sZ) Conf.setPowered(w.getBlockAt(x, y, z), on);
-		}
+	int fNum=-1; for(int q=0,m=sGroups.get(0).length; q<m; q++) if(h == sGroups.get(0).get(q).getY()) { fNum=q; break; } //Get level number.
+	if(fNum != -1 && csGroups.get(fNum) != null) for(int a=0,b=csGroups.get(fNum).length; a<b; a++) { //Power Call Signs:
+		Block sign = csGroups.get(fNum).get(a); int sX=sign.getX(), sY=sign.getY(), sZ=sign.getZ(); //Power Nearby Redstone Equipment:
+		for(int x=sX-1,mX=sX+1; x<=mX; x++) for(int y=sY-1,mY=sY+1; y<=mY; y++) for(int z=sZ-1,mZ=sZ+1;
+			z<=mZ; z++) if(x!=sX || y!=sY || z!=sZ) Conf.setPowered(w.getBlockAt(x, y, z), on);
 	}
 }
 
@@ -284,7 +282,7 @@ public void setEntities(boolean gravity, double delta, double hCheck, boolean re
 		Entity e = (Entity)eList[i]; Location loc = e.getLocation(); double eX = loc.getX(), eY = loc.getY(), eZ = loc.getZ();
 		if((eX >= floor.xMin && eX < floor.xMax+1) && (eY >= yMin-1 && eY < yMax+1) && (eZ >= floor.zMin && eZ < floor.zMax+1)) {
 			e.setGravity(gravity); if(e instanceof Player) {
-				((Player)e).setAllowFlight(((Player)e).getGameMode() == GameMode.CREATIVE ? true : !gravity);
+				((Player)e).setAllowFlight(((Player)e).getGameMode()==GameMode.CREATIVE || !gravity);
 			}
 			if(hCheck != 0) {
 				if(delta != 0 || resetVel) { e.setVelocity(new Vector(0, delta, 0)); e.setFallDistance(0); }
@@ -318,7 +316,7 @@ public void gotoFloor(int fLevel, int sLevel, int selNum, int speed) {
 }
 
 class GotoTimer extends BukkitRunnable {
-private Main plugin = Conf.plugin; private Elevator elev;
+private final Main plugin = Conf.plugin; private Elevator elev;
 private int sLevel, selNum, fID; private double fPos, step, accel;
 
 public void set(Elevator elev, int fLevel, int sLevel, int selNum, double speed, double step, int fID) {

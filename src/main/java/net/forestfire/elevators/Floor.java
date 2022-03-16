@@ -23,7 +23,7 @@ public Floor(World _world, int _xMin, int _zMin, int _xMax, int _zMax, Material 
 
 public static Floor getFloor(Block b, Elevator parent) {
 	World world=b.getWorld(); int bX=b.getX(), h=b.getY()-2, bZ=b.getZ(); Material fType=world.getBlockAt(bX, h, bZ).getType();
-	if(Conf.BLOCKS.indexOf(fType.toString()) == -1 || world.getBlockAt(bX, h+1, bZ).getType() != Conf.AIR) { Conf.err("getFloor", "No valid block type found!"); return null; }
+	if(!Conf.BLOCKS.contains(fType.toString()) || world.getBlockAt(bX, h+1, bZ).getType() != Conf.AIR) { Conf.err("getFloor", "No valid block type found!"); return null; }
 
 	int xP=1, xN=1, zP=1, zN=1; BlockFace f=((WallSign)b.getBlockData()).getFacing();
 	if(f !=  BlockFace.WEST) while(xP <= Conf.RADIUS_MAX) { if(world.getBlockAt(bX+xP, h, bZ).getType() != fType) break; xP++; }
@@ -44,7 +44,7 @@ public static Floor getFloor(Block b, Elevator parent) {
 public int addFloor(double h, boolean isMoving, boolean dontDelete, Integer forceID) {
 	if(!dontDelete) { removeFallingBlocks(); elev.resetElevator(true); }
 	if(isMoving) { //Create FallingBlock Floor:
-		ChuList<FallingBlock> blocks = new ChuList<FallingBlock>(); moving = true;
+		ChuList<FallingBlock> blocks = new ChuList<>(); moving = true;
 		for(int x=xMin; x<=xMax; x++) for(int z=zMin; z<=zMax; z++) {
 			blocks.push(fallingBlock(world, x, h, z, fType));
 		}

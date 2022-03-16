@@ -2,10 +2,7 @@
 
 package net.forestfire.elevators;
 
-import java.util.Iterator;
 import org.bukkit.Bukkit;
-
-//TODO NODOOR setting for individual levels?
 
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -38,35 +35,27 @@ static final String PERM_CREATE = "elevators.create";
 static final String PERM_RELOAD = "elevators.reload";
 public static Elevator LAST_ELEV;
 
-private BukkitTask svTmr = null;
-
 @Override
 public void onEnable() {
-	Conf.initDefaults(this);
-	//Config Auto-save Timer:
-	setTimeout(() -> {
-		Conf.doConfigLoad();
-		svTmr = setInterval(() -> { Conf.saveConfig(); }, Conf.SAVE_INT*60000);
-	}, 200);
+	Conf.initDefaults(this); setTimeout(Conf::doConfLoad, 200);
 	getServer().getPluginManager().registerEvents(this, this);
 	Bukkit.getConsoleSender().sendMessage(Conf.MSG_DBG+"§dElevators Plugin Loaded!");
 }
 
 @Override
 public void onDisable() {
-	if(svTmr != null) { svTmr.cancel(); svTmr = null; }
-	HandlerList.unregisterAll();
+	Conf.saveConf(true); HandlerList.unregisterAll();
 }
 
 @Override
-public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-	if(command.getName().equalsIgnoreCase("elev")) {
-		if(args.length > 0 && args[0].equalsIgnoreCase("reset")) {
-			if(LAST_ELEV != null) { LAST_ELEV.resetElevator(args.length > 1); sender.sendMessage("Last elevator reset."); }
-			else sender.sendMessage("§cNo last elevator.");
-		} else if(args.length == 1 && args[0].equalsIgnoreCase("reload")) {
-			setTimeout(() -> { Conf.doConfigLoad(sender); }, 200);
-		} else sender.sendMessage("§cUsage: /elev reload");
+public boolean onCommand(CommandSender s, Command c, String l, String[] a) {
+	if(c.getName().equalsIgnoreCase("elev")) {
+		if(a.length > 0 && a[0].equalsIgnoreCase("reset")) {
+			if(LAST_ELEV != null) { LAST_ELEV.resetElevator(a.length > 1); s.sendMessage("Last elevator reset."); }
+			else s.sendMessage("§cNo last elevator.");
+		} else if(a.length == 1 && a[0].equalsIgnoreCase("reload")) {
+			setTimeout(() -> Conf.doConfLoad(s), 200);
+		} else s.sendMessage("§cUsage: /elev reload");
 		return true;
 	}
 	return false;
@@ -75,14 +64,10 @@ public boolean onCommand(CommandSender sender, Command command, String label, St
 //JavaScript-like Timer Functionality:
 //Call .cancel() on the returned value to cancel.
 
-public BukkitTask setTimeout(Runnable function, long millis) {
-	return new BukkitRunnable() { public void run() { synchronized(Conf.API_SYNC) { function.run(); }}}.runTaskLater(this, millis/50);
+public BukkitTask setTimeout(Runnable f, long ms) {
+	return new BukkitRunnable() { public void run() { synchronized(Conf.API_SYNC) { f.run(); }}}.runTaskLater(this, ms/50);
 }
-
-public BukkitTask setInterval(Runnable function, long millis) {
-	long t=millis/50; return new BukkitRunnable() { public void run() { synchronized(Conf.API_SYNC) { function.run(); }}}.runTaskTimer(this, t, t);
-}
-public BukkitTask setInterval(BukkitRunnable function, long millis) { long t=millis/50; return function.runTaskTimer(this, t, t); }
+public BukkitTask setInterval(BukkitRunnable f, long ms) { ms/=50; return f.runTaskTimer(this,ms,ms); }
 
 //------------------- Elevator Create Sign Events -------------------
 
@@ -127,7 +112,7 @@ public void onSignChange(SignChangeEvent e) { synchronized(Conf.API_SYNC) { if(e
 					ChuList<Block> oList = elev.sGroups.get(k); int sX = oList.get(0).getX(), sZ = oList.get(0).getZ();
 					WallSign d = (WallSign)sList.get(0).getBlockData(); World w = elev.floor.world;
 					for(int i=0,l=oList.length; i<l; i++) oList.get(i).setType(Conf.AIR); //Delete old signs in other columns.
-					oList = new ChuList<Block>(); for(int i=0,l=sList.length; i<l; i++) { //Rebuild to match new column.
+					oList = new ChuList<>(); for(int i=0,l=sList.length; i<l; i++) { //Rebuild to match new column.
 						Block bl = w.getBlockAt(sX, sList.get(i).getY(), sZ); Conf.addSignBlock(bl);
 						bl.setType(Material.OAK_WALL_SIGN); bl.setBlockData(d);
 						Conf.setSign(bl, Conf.lines(sList.get(i))); oList.push(bl);
@@ -138,12 +123,12 @@ public void onSignChange(SignChangeEvent e) { synchronized(Conf.API_SYNC) { if(e
 				ChuList<Block> sRef = elev.sGroups.get(0); int sX = sList.get(0).getX(), sZ = sList.get(0).getZ();
 				WallSign d = (WallSign)sList.get(0).getBlockData(); World w = elev.floor.world;
 				for(int i=0,l=sList.length; i<l; i++) sList.get(i).setType(Conf.AIR); //Delete old signs in column.
-				sList = new ChuList<Block>(); for(int i=0,l=sRef.length; i<l; i++) { //Rebuild to match other columns.
+				sList = new ChuList<>(); for(int i=0,l=sRef.length; i<l; i++) { //Rebuild to match other columns.
 					Block bl = w.getBlockAt(sX, sRef.get(i).getY(), sZ); Conf.addSignBlock(bl);
 					bl.setType(Material.OAK_WALL_SIGN); bl.setBlockData(d);
 					Conf.setSign(bl, Conf.lines(sRef.get(i))); sList.push(bl);
 				}
-				elev.sGroups.push(sList); setTimeout(() -> { Conf.saveConfig(); }, 200); return; //Add new signs to elevator and save.
+				elev.sGroups.push(sList); Conf.saveConf(); return; //Add new signs to elevator and save.
 			}
 		} else { //New elevator:
 			Floor fl = Floor.getFloor(block, null); if(fl==null) {
@@ -165,7 +150,7 @@ public void onSignChange(SignChangeEvent e) { synchronized(Conf.API_SYNC) { if(e
 
 		//Line 2 Special Modes:
 		if(elev.noDoor) {
-			elev.sGroups.get(0).forEach((s) -> { Conf.setLine(s, 2, ""); });
+			elev.sGroups.get(0).forEach((s) -> Conf.setLine(s, 2, ""));
 		}
 		//Set modes:
 		String sLine = e.getLine(2);
@@ -189,7 +174,7 @@ public void onSignChange(SignChangeEvent e) { synchronized(Conf.API_SYNC) { if(e
 		{ elev.setDoors(sList.get(i).getY(), i==0); elev.floor.addFloor(sList.get(i).getY()-2, false, true); }
 
 		if(cErr) e.setLine(0, Conf.ERROR); else e.setLine(0, Conf.TITLE); //Display ERROR line if error.
-		setTimeout(() -> { Conf.saveConfig(); }, 200); //Save Changes To Config.
+		Conf.saveConf(); //Save Changes To Config.
 	}
 }}}
 
@@ -262,26 +247,26 @@ private void onDestroyElevSign(Cancellable e, Player p, Block b) {
 		if(sList.length <= 1) { elev.selfDestruct(); p.sendMessage("§eElevator destroyed."); } //Delete elevator instance. This meeting... never happened.
 		else { sList.remove(subInd); elev.sGroups.set(ind, sList); } //Remove sign from elevator.
 		int y = b.getY()-2; for(int x=fl.xMin; x<=fl.xMax; x++) for(int z=fl.zMin; z<=fl.zMax; z++) fl.world.getBlockAt(x,y,z).setType(Conf.AIR); //Remove floor.
-		Block pBl = Conf.getBlockBelowPlayer(p); if(pBl.getType() == Conf.AIR) pBl.setType(Material.DIRT); //Add block below player.
+		Block pBl=p.getLocation().subtract(0,1,0).getBlock(); if(pBl.isEmpty()) pBl.setType(Material.DIRT); //Add block below player.
 		elev.remBlockDoor(b.getY()); //Delete block door.
 	}
 
-	setTimeout(() -> { Conf.saveConfig(); }, 200); //Save Changes To Config.
+	Conf.saveConf(); //Save Changes To Config.
 }
 
 //------------------- Piston Interact Events -------------------
 
 @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
 public void onPistonExtend(BlockPistonExtendEvent e) { synchronized(Conf.API_SYNC) {
-	Iterator<Block> i = e.getBlocks().iterator(); while(i.hasNext()) {
-		if(Elevator.fromElevBlock(i.next()) != null) { e.setCancelled(true); Conf.err("onPistonExtend", "Prevent block destory!"); }
+	for(Block b: e.getBlocks()) if(Elevator.fromElevBlock(b) != null) {
+		e.setCancelled(true); Conf.err("onPistonExtend", "Prevent block destroy!");
 	}
 }}
 
 @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
 public void onPistonRetract(BlockPistonRetractEvent e) { synchronized(Conf.API_SYNC) {
-	Iterator<Block> i = e.getBlocks().iterator(); while(i.hasNext()) {
-		if(Elevator.fromElevBlock(i.next()) != null) { e.setCancelled(true); Conf.err("onPistonRetract", "Prevent block destory!"); }
+	for(Block b: e.getBlocks()) if(Elevator.fromElevBlock(b) != null) {
+		e.setCancelled(true); Conf.err("onPistonRetract", "Prevent block destroy!");
 	}
 }}
 
@@ -300,7 +285,7 @@ public void onPlayerInteract(PlayerInteractEvent e) { synchronized(Conf.API_SYNC
 						!=Conf.L_ST.charAt(Conf.L_ST.length()-1)?2:0),selName.length()-Conf.L_END.length());
 
 			//Get List of Floor Names:
-			ChuList<String> flNames = new ChuList<String>();
+			ChuList<String> flNames = new ChuList<>();
 			for(int i=0,l=dsList.length; i<l; i++) { flNames.set(i, Conf.lines
 					(dsList.get(i))[3]); if(selName.equals(flNames.get(i))) selNum = i; }
 
