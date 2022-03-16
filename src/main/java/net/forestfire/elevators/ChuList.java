@@ -2,7 +2,7 @@
 
 //An actually properly implemented List class? With error checking!? Imagine that!
 
-package com.pecacheu.elevators;
+package net.forestfire.elevators;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,18 +17,15 @@ import java.util.function.UnaryOperator;
 
 @SuppressWarnings("serial")
 public class ChuList<E> extends ArrayList<E> {
-	public int length = 0; //<- JavaScript Compatibility (Maybe not the best idea, though)
-	
+	public int length=0; //<- JavaScript Compatibility (Maybe not the best idea, though)
 	public ChuList() {
 		super();
 	}
-	
 	public ChuList(int initialCapacity) {
 		super(initialCapacity);
 	}
-	
 	public ChuList(Collection<? extends E> c) {
-		super(c); length = super.size();
+		super(c); length=super.size();
 	}
 	
 	//Construct with initial elements:

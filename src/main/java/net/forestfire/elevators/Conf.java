@@ -1,6 +1,6 @@
 //Elevators v2, ©2020 Pecacheu. Licensed under GNU GPL 3.0
 
-package com.pecacheu.elevators;
+package net.forestfire.elevators;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -315,11 +315,17 @@ public class Conf {
 	public static String unpackFile(String internalPath, File dest) {
 		InputStream stream = plugin.getClass().getResourceAsStream(internalPath);
 		String str = ""; int p = 0; try {
-			while(p < 3000) { int read = stream.read(); if(read < 0 || read >=
-			65535) break; str += fromCharCode(read); p++; } stream.close();
-			Writer file = new BufferedWriter(new OutputStreamWriter(new
-			FileOutputStream(dest), "UTF-8")); file.write(str); file.close(); //<- Needed for Proper UTF-8 Encoding.
-		} catch (Exception e) { err("unpackFile", "Caught Exception: "+e.getMessage()); return ""; } return str;
+			while(p < 3000) {
+				int read = stream.read(); if(read < 0 || read >= 65535) break;
+				str += fromCharCode(read); p++;
+			}
+			stream.close();
+			Writer file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(dest), "UTF-8"));
+			file.write(str); file.close(); //<- Needed for Proper UTF-8 Encoding.
+		} catch (Exception e) {
+			err("unpackFile", "Caught Exception: "+e.getMessage());
+			return "";
+		} return str;
 	}
 	
 	//Emulate JavaScript's fromCharCode Function:

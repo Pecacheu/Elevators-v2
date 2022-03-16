@@ -1,6 +1,6 @@
 //Elevators v2, ©2020 Pecacheu. Licensed under GNU GPL 3.0
 
-package com.pecacheu.elevators;
+package net.forestfire.elevators;
 
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;

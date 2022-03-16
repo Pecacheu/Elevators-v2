@@ -1,8 +1,8 @@
-main: com.pecacheu.elevators.Main
-name: Elevators_v2
-version: 3.2.0
-author: Pecacheu
-api-version: 1.15
+name: Elevators
+version: '${project.version}'
+main: net.forestfire.elevators.Main
+api-version: 1.18
+authors: [ Pecacheu ]
 description: Adds Working Elevators to Minecraft!
 commands:
   elev:
