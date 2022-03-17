@@ -44,18 +44,17 @@ public static Floor getFloor(Block b, Elevator parent) {
 public int addFloor(double h, boolean isMoving, boolean dontDelete, Integer forceID) {
 	if(!dontDelete) { removeFallingBlocks(); elev.resetElevator(true); }
 	if(isMoving) { //Create FallingBlock Floor:
-		ChuList<FallingBlock> blocks = new ChuList<>(); moving = true;
+		ChuList<FallingBlock> bl=new ChuList<>((xMax-xMin+1)*(zMax-zMin+1)); moving=true;
 		for(int x=xMin; x<=xMax; x++) for(int z=zMin; z<=zMax; z++) {
-			blocks.push(fallingBlock(world, x, h, z, fType));
+			bl.add(fallingBlock(world, x, h, z, fType));
 		}
 		int ind; if(forceID!=null) ind = forceID;
 		else ind = Conf.findFirstEmpty(Conf.movingFloors);
-		Conf.movingFloors.set(ind, blocks); return ind;
+		Conf.movingFloors.set(ind, bl); return ind;
 	} else { //Create Solid Floor:
 		for(int x=xMin; x<=xMax; x++) for(int z=zMin; z<=zMax; z++) world.getBlockAt(x,(int)h,z).setType(fType);
 	} return 0;
 } public int addFloor(double h, boolean isMoving, boolean dontDelete) { return addFloor(h, isMoving, dontDelete, null); }
-public int addFloor(double h, boolean isMoving) { return addFloor(h, isMoving, false, null); }
 
 //Moves a MovingFloor using floorID.
 public void moveFloor(int floorID, double h) {
@@ -72,23 +71,20 @@ public void deleteFloor(int floorID) {
 		ChuList<FallingBlock> bList = Conf.movingFloors.get(floorID);
 		for(int i=0,l=bList.length; i<l; i++) bList.get(i).remove();
 	} Conf.movingFloors.set(floorID, null);
-	//Restore Gravity to LivingEntities:
-	elev.setEntities(true);
 }
 
 //-- FallingBlock Functions:
 
 public static FallingBlock fallingBlock(World world, int x, double y, int z, Material type) {
-	FallingBlock falling = world.spawnFallingBlock(new Location(world, x+0.5, y, z+0.5), type.createBlockData());
+	FallingBlock falling = world.spawnFallingBlock(new Location(world, x+.5, y, z+.5), type.createBlockData());
 	falling.setGravity(false); falling.setDropItem(false); return falling;
 }
 
 public void removeFallingBlocks() {
-	int yMin = elev.yMin(), yMax = elev.yMax();
-	Object[] el = world.getEntitiesByClass(org.bukkit.entity.FallingBlock.class).toArray();
-	for(int i=0,l=el.length; i<l; i++) { Location loc = ((Entity)el[i]).getLocation();
-		if((loc.getX() >= xMin-0.5 && loc.getX() <= xMax+0.5) && (loc.getY() >= yMin-0.5 && loc.getY
-				() <= yMax+0.5) && (loc.getZ() >= zMin-0.5 && loc.getZ() <= zMax+0.5)) ((Entity)el[i]).remove();
+	int yMin=elev.yMin(), yMax=elev.yMax();
+	for(Entity e: world.getEntitiesByClass(FallingBlock.class)) {
+		Location l=e.getLocation(); if((l.getX()>=xMin-.5 && l.getX()<=xMax+.5) &&
+			(l.getY()>=yMin-.5 && l.getY()<=yMax+.5) && (l.getZ()>=zMin-.5 && l.getZ()<=zMax+.5)) e.remove();
 	}
 }
 }

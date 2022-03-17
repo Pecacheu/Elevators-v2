@@ -82,141 +82,133 @@ public static void saveConf(boolean f) {
 } public static void saveConf() { saveConf(false); }
 
 private static void doSaveConf() {
-	SVTMR=null; File f=new File(CONFIG_PATH); String data="";
+	SVTMR=null; File f=new File(CONFIG_PATH); String data;
 
 	//If Not Found, Create New Config File:
-	if(!f.exists()) data=newConf(f); else {
-		try { //Read Current Config File:
-			FileReader r=new FileReader(f); int p=0,l;
-			while(p < 3000) { l=r.read(); if(l<0) break; data += fromCharCode(l); p++; }
-			r.close();
-		} catch(IOException e) { err("saveConfig", "IOException while reading file!"); return; }
-	}
+	if(!f.exists()) data=newConf(f); else try { //Read Current Config File:
+		StringBuilder d=new StringBuilder(); FileReader r=new FileReader(f); int p=0,l;
+		while(p < 3000) { l=r.read(); if(l<0) break; d.append((char)l); p++; }
+		r.close(); data=d.toString();
+	} catch(IOException e) { err("saveConfig", "IOException while reading file!"); return; }
 
 	if(data.length() == 0) { err("saveConfig", "Save data string empty!"); return; }
 
 	//Separate And Overwrite BLOCKS Section:
-	int bPos = data.lastIndexOf("blockList:"); String bStr = data.substring(bPos);
-
-	int bEnd = 0, nl = 0; while(bEnd < 600) {
-		if(nl==1 && bStr.charAt(bEnd) != ' ') nl = 2;
-		if(nl==2) { if(bStr.charAt(bEnd) == '\n') break; }
-		else nl = (bStr.charAt(bEnd) == '\n') ? 1 : 0; bEnd++;
-	} bEnd += bPos;
+	int bPos=data.lastIndexOf("blockList:"),bEnd=0,nl=0;
+	String bStr=data.substring(bPos);
+	while(bEnd<600) {
+		if(nl==1 && bStr.charAt(bEnd)!=' ') nl=2;
+		if(nl==2) { if(bStr.charAt(bEnd)=='\n') break; } else nl=(bStr.charAt(bEnd)=='\n')?1:0;
+		bEnd++;
+	}
+	bEnd+=bPos;
 
 	YamlConfiguration bConf = new YamlConfiguration(); ConfigurationSection bList = bConf.createSection("blockList");
 	for(int i=0,l=BLOCKS.length; i<l; i++) bList.set(BLOCKS.get(i), BL_SPEED.get(i));
 	data = data.substring(0,bPos)+bConf.saveToString()+data.substring(bEnd);
 
 	//Separate And Overwrite Elevators Section:
-	int sPos = data.lastIndexOf("elevators:"); data = data.substring(0,sPos);
-	YamlConfiguration eConf = new YamlConfiguration();
-
-	ConfigurationSection eList = eConf.createSection("elevators"); Object[] eKeys = elevators.keySet().toArray();
-
-	//Generate Compressed Elevator Data:
-	for(int i=0,l=eKeys.length; i<l; i++) eList.set((String)eKeys[i], elevators.get(eKeys[i]).toSaveData());
+	YamlConfiguration eConf=new YamlConfiguration();
+	ConfigurationSection eList=eConf.createSection("elevators");
+	for(String k: elevators.keySet()) eList.set(k, elevators.get(k).toSaveData()); //Gen Compressed Elev Data
 
 	//Append New Data And Save File:
-	data += eConf.saveToString(); Writer file; try {
-		file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f), StandardCharsets.UTF_8));
-		file.write(data); file.close();
-	} catch (IOException e) { err("saveConfig", "IOException while saving file!"); }
+	data = data.substring(0, data.lastIndexOf("elevators:"))+eConf.saveToString();
+	try {
+		Writer w=new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f), StandardCharsets.UTF_8));
+		w.write(data); w.close(); dbg("Saved "+elevators.size()+" elevators!");
+	} catch(IOException e) { err("saveConfig", "IOException while saving file!"); }
 }
 
 private static String newConf(File file) {
 	Bukkit.getServer().getConsoleSender().sendMessage(MSG_NEW_CONF);
 	try { java.nio.file.Files.createDirectories(file.toPath().getParent()); }
-	catch (IOException e) { err("newConfig", "IOException while creating directories!"); return ""; }
+	catch(IOException e) { err("newConfig", "IOException while creating directories!"); return ""; }
 	return unpackFile("config.yml", file);
 }
 
 public static Object loadConf() { try {
 	File f=new File(CONFIG_PATH); YamlConfiguration conf; boolean pf=f.exists();
 	if(pf) conf=YamlConfiguration.loadConfiguration(f); else conf=new YamlConfiguration();
-
-	conf.setDefaults(defaults); movingFloors = new ChuList<>(); CLTMR = null;
+	conf.setDefaults(defaults); movingFloors=new ChuList<>(); CLTMR=null;
 
 	//Load Global Settings:
-	DEBUG = conf.getBoolean("debug");
-	TITLE = c(conf.getString("title"));
-	CALL = c(conf.getString("call"));
-	ERROR = c(conf.getString("error"));
-	L_ST = c(conf.getString("selStart"));
-	L_END = c(conf.getString("selEnd"));
-	NODOOR = c(conf.getString("noDoor"));
+	DEBUG=conf.getBoolean("debug");
+	TITLE=c(conf.getString("title"));
+	CALL=c(conf.getString("call"));
+	ERROR=c(conf.getString("error"));
+	L_ST=c(conf.getString("selStart"));
+	L_END=c(conf.getString("selEnd"));
+	NODOOR=c(conf.getString("noDoor"));
 
-	MSG_GOTO_ST = c(conf.getString("msgGotoStart"));
-	MSG_GOTO_END = c(conf.getString("msgGotoEnd"));
-	MSG_CALL = c(conf.getString("msgCall"));
+	MSG_GOTO_ST=c(conf.getString("msgGotoStart"));
+	MSG_GOTO_END=c(conf.getString("msgGotoEnd"));
+	MSG_CALL=c(conf.getString("msgCall"));
 
-	MSG_GOTO_ST = c(conf.getString("msgGotoStart"));
-	MSG_GOTO_END = c(conf.getString("msgGotoEnd"));
-	MSG_CALL = c(conf.getString("msgCall"));
+	MSG_GOTO_ST=c(conf.getString("msgGotoStart"));
+	MSG_GOTO_END=c(conf.getString("msgGotoEnd"));
+	MSG_CALL=c(conf.getString("msgCall"));
 
-	NOMV = c(StringEscapeUtils.unescapeJava(conf.getString("noMove")));
-	M_ATLV = c(StringEscapeUtils.unescapeJava(conf.getString("mAtLevel")));
-	ATLV = c(StringEscapeUtils.unescapeJava(conf.getString("atLevel")));
-	C_UP = c(StringEscapeUtils.unescapeJava(conf.getString("callUp")));
-	UP = c(StringEscapeUtils.unescapeJava(conf.getString("up")));
-	C_DOWN = c(StringEscapeUtils.unescapeJava(conf.getString("callDown")));
-	DOWN = c(StringEscapeUtils.unescapeJava(conf.getString("down")));
+	NOMV=c(StringEscapeUtils.unescapeJava(conf.getString("noMove")));
+	M_ATLV=c(StringEscapeUtils.unescapeJava(conf.getString("mAtLevel")));
+	ATLV=c(StringEscapeUtils.unescapeJava(conf.getString("atLevel")));
+	C_UP=c(StringEscapeUtils.unescapeJava(conf.getString("callUp")));
+	UP=c(StringEscapeUtils.unescapeJava(conf.getString("up")));
+	C_DOWN=c(StringEscapeUtils.unescapeJava(conf.getString("callDown")));
+	DOWN=c(StringEscapeUtils.unescapeJava(conf.getString("down")));
 
-	RADIUS_MAX = conf.getInt("floorMaxRadius");
-	MOVE_RES = conf.getInt("updateDelay");
-	DOOR_HOLD = conf.getInt("doorHoldTime");
-	DOOR_SET = Material.valueOf(conf.getString("doorBlock"));
+	RADIUS_MAX=conf.getInt("floorMaxRadius");
+	MOVE_RES=conf.getInt("updateDelay");
+	DOOR_HOLD=conf.getInt("doorHoldTime");
+	DOOR_SET=getMat(conf.getString("doorBlock"));
 
-	ConfigurationSection bList = conf.getConfigurationSection("blockList");
-	BLOCKS = new ChuList<>(); BL_SPEED = new ChuList<>();
-	if(bList != null) {
-		Object[] bKeys = bList.getKeys(false).toArray();
-		for(int b=0,g=bKeys.length; b<g; b++) { //Remove any items from block list that aren't solid blocks:
-			Material mat = Material.valueOf((String)bKeys[b]);
-			if(mat.isSolid()) { BLOCKS.push((String)bKeys[b]); BL_SPEED.push(bList.getInt((String)bKeys[b])); }
-		}
+	ConfigurationSection bList=conf.getConfigurationSection("blockList");
+	BLOCKS=new ChuList<>(); BL_SPEED=new ChuList<>();
+	if(bList!=null) for(String k: bList.getKeys(false)) { //Remove non-sold blocks:
+		if(getMat(k).isSolid()) { BLOCKS.add(k); BL_SPEED.add(bList.getInt(k)); }
 	}
 
-	if(BLOCKS.length < 1) { //Load Default Block Settings:
-		BLOCKS = new ChuList<>("IRON_BLOCK", "GOLD_BLOCK", "EMERALD_BLOCK", "DIAMOND_BLOCK", "LEGACY_STAINED_GLASS", "GLASS");
-		BL_SPEED = new ChuList<>(8, 10, 12, 15, 5, 4);
+	if(BLOCKS.length<1) { //Load Default Block Settings:
+		BLOCKS=new ChuList<>("IRON_BLOCK", "GOLD_BLOCK", "EMERALD_BLOCK", "DIAMOND_BLOCK", "LEGACY_STAINED_GLASS", "GLASS");
+		BL_SPEED=new ChuList<>(8, 10, 12, 15, 5, 4);
 	}
 
 	//Load Compressed Elevator Data:
-	elevators.clear(); ConfigurationSection eList = conf.getConfigurationSection("elevators"); int eCnt=0;
-	if(eList != null) { Object[] eKeys = eList.getKeys(false).toArray(); for(int i=0,l=eKeys.length; i<l; i++) {
-		Elevator elev = Elevator.fromSaveData(eList.getStringList((String)eKeys[i]));
-		if(elev != null) elevators.put((String)eKeys[i], elev); else { eCnt++; err("loadConfig", "fromSaveData returned null at ID "+eKeys[i]); }
-	}}
+	elevators.clear(); ConfigurationSection eList=conf.getConfigurationSection("elevators");
+	int eCnt=0; if(eList!=null) for(String k: eList.getKeys(false)) {
+		Elevator e=Elevator.fromSaveData(eList.getStringList(k));
+		if(e!=null) elevators.put(k,e);
+		else { eCnt++; err("loadConfig", "fromSaveData returned null at ID "+k); }
+	}
 	return pf?eCnt:"NOCONF";
-} catch(Exception e) { err("loadConfig", "Caught Exception: "+e.getMessage()); return e.getMessage(); }}
+} catch(Exception e) { err("loadConfig", e.getMessage()); return e.getMessage(); }}
 
 public static void doConfLoad(CommandSender s) {
-	Object err = loadConf();
-	if(err == "NOCONF") doSaveConf(); //Create New Config.
+	Object err=loadConf();
+	if(err=="NOCONF") doSaveConf(); //Create New Config.
 	else if(err instanceof Integer) { //Loaded Config Successfully.
-		if((Integer)err > 0) {
-			String delMsg = MSG_DEL_ST+err+MSG_DEL_END;
+		if((Integer)err>0) {
+			String delMsg=MSG_DEL_ST + err + MSG_DEL_END;
 			Bukkit.getServer().getConsoleSender().sendMessage(delMsg);
 			if(s instanceof Player) s.sendMessage(delMsg);
-		} doSaveConf();
+		}
+		doSaveConf();
 	} else if(err!=null) { //Error While Loading Config.
-		Bukkit.getServer().getConsoleSender().sendMessage(MSG_ERR_CONF+"\n"+err);
+		Bukkit.getServer().getConsoleSender().sendMessage(MSG_ERR_CONF + "\n" + err);
 		if(s instanceof Player) s.sendMessage(MSG_ERR_CONF);
 	}
-	if(s != null) s.sendMessage("§aElevators Plugin Reloaded!");
-} public static void doConfLoad() { doConfLoad(null); }
+	if(s!=null) s.sendMessage("§aElevators Plugin Reloaded!");
+}
 
 //-------------------  Useful Functions -------------------
 
-public static String locToString(Location loc) {
-	return loc.getWorld().getName()+"-"+(int)loc.getX()+"-"+(int)loc.getZ();
+private static Material getMat(String m) throws Exception {
+	try { return Material.valueOf(m); }
+	catch(IllegalArgumentException e) { throw new Exception("No such material "+m); }
 }
 
-public static Location locFromString(String str) {
-	String[] data = str.split("-"); World world = plugin.getServer().getWorld(data[0]);
-	if(world==null) { err("locFromString", "World '"+data[0]+"' not found!"); return null; }
-	return new Location(world, Integer.parseInt(data[1]), 0, Integer.parseInt(data[2]));
+public static String locToString(Location l) {
+	return l.getWorld().getName()+"-"+l.getBlockX()+"-"+l.getBlockZ();
 }
 
 //Open/close doors & gates:
@@ -260,7 +252,7 @@ public static void setSign(Block sign, String[] lines) {
 }
 
 public static void setLine(Block sign, int l, String str) {
-	Sign s = ((Sign)sign.getState()); s.setLine(l, str==null?"":str); s.update();
+	Sign s=((Sign)sign.getState()); s.setLine(l, str==null?"":str); s.update();
 }
 
 //Read lines from sign:
@@ -270,8 +262,8 @@ public static String[] lines(Block sign) {
 
 //Get block sign is attached to:
 public static Block getSignBlock(Block s) {
-	World w = s.getWorld(); int x = s.getX(), y = s.getY(), z = s.getZ();
-	BlockFace f = ((WallSign)s.getBlockData()).getFacing();
+	World w=s.getWorld(); int x=s.getX(), y=s.getY(), z=s.getZ();
+	BlockFace f=((WallSign)s.getBlockData()).getFacing();
 	switch(f) {
 		case NORTH: return w.getBlockAt(x,y,z+1); case SOUTH: return w.getBlockAt(x,y,z-1);
 		case WEST: return w.getBlockAt(x+1,y,z); case EAST: return w.getBlockAt(x-1,y,z);
@@ -281,16 +273,17 @@ public static Block getSignBlock(Block s) {
 
 //Ensure there is a solid block behind the sign.
 public static void addSignBlock(Block s) {
-	Block b = Conf.getSignBlock(s); if(!b.getType().isSolid()) setDoorBlock(b,true);
+	Block b=Conf.getSignBlock(s); setDoorBlock(b,true);
 }
 public static void setDoorBlock(Block b, boolean on) {
-	b.setType(on?Conf.DOOR_SET:Conf.AIR);
+	Material m=b.getType();
+	if(on?!m.isSolid():m==Conf.DOOR_SET) b.setType(on?Conf.DOOR_SET:Conf.AIR);
 	if(on && b.getBlockData() instanceof MultipleFacing) { //Connect block faces
 		MultipleFacing f=(MultipleFacing)b.getBlockData(); Location l=b.getLocation();
-		f.setFace(BlockFace.EAST, !l.clone().add(1,0,0).getBlock().isEmpty());
-		f.setFace(BlockFace.WEST, !l.clone().add(-1,0,0).getBlock().isEmpty());
-		f.setFace(BlockFace.NORTH, !l.clone().add(0,0,-1).getBlock().isEmpty());
-		f.setFace(BlockFace.SOUTH, !l.clone().add(0,0,1).getBlock().isEmpty());
+		f.setFace(BlockFace.EAST, !l.clone().add(1,0,0).getBlock().isPassable());
+		f.setFace(BlockFace.WEST, !l.clone().add(-1,0,0).getBlock().isPassable());
+		f.setFace(BlockFace.NORTH, !l.clone().add(0,0,-1).getBlock().isPassable());
+		f.setFace(BlockFace.SOUTH, !l.clone().add(0,0,1).getBlock().isPassable());
 		b.setBlockData(f);
 	}
 }
@@ -307,7 +300,7 @@ public static boolean isCallSign(Block b, ConfData ref, Player pl, String perm) 
 }
 
 public static boolean isElevPlayer(Player pl, ConfData ref, String perm) {
-	if(!hasPerm(pl, perm)) return false; ref.data = Elevator.fromPlayer(pl); return (ref.data!=null);
+	if(!hasPerm(pl, perm)) return false; ref.data=Elevator.fromEntity(pl); return (ref.data!=null);
 }
 
 //Find first null element in a RaichuList:
@@ -324,12 +317,12 @@ public static boolean hasPerm(Player pl, String perm) {
 public static String unpackFile(String intPath, File dest) {
 	InputStream st = plugin.getResource(intPath);
 	String s; try {
-		StringBuilder sb=new StringBuilder(); int p=0,r;
-		while(p < 3000) { r=st.read(); if(r<0) break; sb.append(fromCharCode(r)); p++; }
-		st.close(); s=sb.toString();
+		StringBuilder d=new StringBuilder(); int p=0,r;
+		while(p < 3000) { r=st.read(); if(r<0) break; d.append((char)r); p++; }
+		st.close(); s=d.toString();
 		Writer file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(dest), StandardCharsets.UTF_8));
 		file.write(s); file.close();
-	} catch (Exception e) { err("unpackFile", "Caught Exception: "+e.getMessage()); return ""; }
+	} catch (Exception e) { err("unpackFile", e.getMessage()); return ""; }
 	return s;
 }
 
@@ -363,11 +356,6 @@ public static String c(String str) {
 			.getByChar(clr[i].charAt(0))).append(clr[i].substring(1));
 	return c.toString();
 }
-
-public static Block getBlockBelowPlayer(Player p, boolean above) {
-	Location loc = p.getLocation(); int pX = (int)Math.floor(loc.getX()), pZ = (int)Math.floor(loc.getZ());
-	double pY = loc.getY(); return p.getWorld().getBlockAt(pX, (int)(above?Math.ceil(pY+1.99):Math.floor(pY-1)), pZ);
-} public static Block getBlockBelowPlayer(Player p) { return getBlockBelowPlayer(p, false); }
 }
 
 class ConfData {
