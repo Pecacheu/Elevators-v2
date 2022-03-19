@@ -22,13 +22,17 @@ This plugin took WEEKS to develop. The initial development took only a week, as 
 Find the plugin on [BukkitDev](http://dev.bukkit.org/projects/elevators-v2)!
 
 ### How To Use
-Place signs with [elevator] on line 1 on each floor. They will error (showing [???]) if the floor is too big or an invalid type. (You can change floor types and associated speeds in the config.)
+Place signs with `[elevator]` on line 1 on each floor. They will error (showing [???]) if the floor is too big or an invalid type. (You can change floor types and associated speeds in the config.)
 
-Use line 4 to add a custom floor name. If not specified, the default is in the format `Level [n]`. If the floor name matches this format, and [n] is a valid number, it will be automatically updated whenever the elevator is modified. (In case a floor was added in-between floors, changing the floor numbering.)
+Use line 4 to add a custom floor name. If not specified, the default is in the format `Level [n]`. If the floor name matches this format, and `[n]` is a valid number, it will be automatically updated whenever the elevator is modified. (In case a floor was added in-between floors, changing the floor numbering.)
 
-If you put [nodoor] on line 3, the block-based door feature will be disabled, and call signs will gain the ability to turn nearby levers on and off with the door timer, allowing you to create piston doors for your elevator. Nearby doors and gates will be opened/closed either way.
+If you put `[nodoor]` on line 3, the block-based door feature will be disabled. Nearby doors and gates will be opened/closed either way.
 
-You can create call-button signs with [call] on line 1. They will error if they're less than 1 or more than 3 blocks away from the elevator.
+### Call Signs
+
+Create call-button signs with `[call]` on line 1. They will error if they're less than 1 or more than 3 blocks away from the elevator. They can be placed up to 1 block above and 3 blocks below a given floor. This is useful for hidden call signs that activate redstone.
+
+Any Redstone Lever next to a call sign will be activated when the doors open!
 
 #### User-made Tutorial:
 https://www.youtube.com/watch?v=9nzRgzJEpJ0

@@ -12,6 +12,9 @@ noDoor: '&1[nodoor]' # NoDoor status indicator.
 msgGotoStart: '&eTraveling to &a' # Start of player message.
 msgGotoEnd: '&e.' # End of player message.
 msgCall: '&eCalling elevator.' # Player message for CALL signs.
+msgNotFound: '&cElevator not found! Try recreating it.'
+msgPerm: '&cSorry, you need the &e'
+msgPermEnd: ' &cpermission!'
 
 # Status symbols displayed on CALL signs:
 

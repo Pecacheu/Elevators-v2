@@ -6,10 +6,9 @@ authors: [ Pecacheu ]
 description: Adds Working Elevators to Minecraft!
 commands:
   elev:
-    description: Reload The Plugin.
-    usage: /elev reload
+    description: Reload the plugin or reset last used elevator.
+    usage: /elev <list|reload|reset>
     permission: elevators.reload
-    permission-message: You don't have permission to do that!
 permissions:
   elevators.use:
     default: true

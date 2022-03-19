@@ -12,8 +12,11 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.List;
 import java.util.TreeMap;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -38,35 +41,34 @@ import org.bukkit.scheduler.BukkitTask;
 public class Conf {
 //Global Variables:
 public static TreeMap<String,Elevator> elevators = new TreeMap<>();
-public static ChuList<ChuList<FallingBlock>> movingFloors = new ChuList<>();
-public static BukkitTask CLTMR = null; public static Main plugin = null;
-public static final Object API_SYNC = new Object();
-private static BukkitTask SVTMR = null;
+public static ChuList<ChuList<FallingBlock>> movingFloors=new ChuList<>();
+public static BukkitTask CLTMR=null; public static Main plugin=null;
+public static final Object API_SYNC=new Object();
+private static BukkitTask SVTMR=null;
 
 //Global Config Settings:
-public static String TITLE, CALL, ERROR, L_ST, L_END, NODOOR, MSG_GOTO_ST, MSG_GOTO_END, MSG_CALL, NOMV, M_ATLV, ATLV,
-		C_UP, UP, C_DOWN, DOWN; public static int RADIUS_MAX, MOVE_RES, DOOR_HOLD; public static ChuList<String> BLOCKS;
-public static ChuList<Integer> BL_SPEED; public static Material DOOR_SET; public static boolean DEBUG = false;
+public static String TITLE, CALL, ERROR, L_ST, L_END, NODOOR, MSG_GOTO_ST, MSG_GOTO_END, MSG_CALL, MSG_NOT_FOUND,
+MSG_PERM, MSG_PERM_END, NOMV, M_ATLV, ATLV, C_UP, UP, C_DOWN, DOWN; public static int RADIUS_MAX, MOVE_RES, DOOR_HOLD;
+public static ChuList<String> BLOCKS; public static ChuList<Integer> BL_SPEED; public static Material DOOR_SET;
+public static boolean DEBUG=false;
 
 //Constants:
-public static final String MSG_NEW_CONF = "§e[Elevators] §bCould not load config. Creating new config file...";
-public static final String MSG_ERR_CONF = "§e[Elevators] §cError while loading config!";
-public static final String MSG_DBG = "§e[Elevators] §r";
-public static final String MSG_ERR_ST = "§e[Elevators] §eError in §b";
-public static final String MSG_ERR_MID = "§e: §c";
-public static final String MSG_DEL_ST = "§e[Elevators] §b";
-public static final String MSG_DEL_END = " §esaved elevators were deleted because they were invalid!";
-public static final String CONFIG_PATH = "plugins/Elevators/config.yml";
-public static final Material AIR = Material.AIR;
+public static final String MSG_NEW_CONF="§e[Elevators] §bCould not load config. Creating new config file...",
+MSG_ERR_CONF="§e[Elevators] §cError while loading config!", MSG_DBG="§e[Elevators] §r",
+MSG_ERR_ST="§e[Elevators] §eError in §b", MSG_ERR_MID="§e: §c", MSG_DEL_ST="§e[Elevators] §b",
+MSG_DEL_END=" §esaved elevators were deleted because they were invalid!", CONFIG_PATH="plugins/Elevators/config.yml";
+static final Material AIR = Material.AIR;
 
-public static MemoryConfiguration defaults = new MemoryConfiguration();
-public static void initDefaults(Main _plugin) {
+static MemoryConfiguration defaults = new MemoryConfiguration();
+static void initDefaults(Main _plugin) {
 	defaults.set("debug", false);
 	defaults.set("title", "&1[&3Elevator&1]"); defaults.set("call", "&1[&3Call&1]"); defaults.set("error", "[&4???&r]");
 	defaults.set("selStart", "&8> &5"); defaults.set("selEnd", " &8<"); defaults.set("noDoor", "&1[nodoor]");
 	defaults.set("msgGotoStart", "&eTraveling to &a"); defaults.set("msgGotoEnd", "&e.");
-	defaults.set("msgCall", "&eCalling elevator."); defaults.set("noMove",   "&4⦿  ⦿  ⦿  ⦿  ⦿  ⦿");
-	defaults.set("mAtLevel", "&3⦿  ⦿  ⦿  ⦿  ⦿  ⦿"); defaults.set("atLevel",  "&2⦿  ⦿  ⦿  ⦿  ⦿  ⦿");
+	defaults.set("msgCall", "&eCalling elevator."); defaults.set("msgNotFound", "&cElevator not found! Try recreating it.");
+	defaults.set("msgPerm", "&cSorry, you need the &e"); defaults.set("msgPermEnd", " &cpermission!");
+	defaults.set("noMove",   "&4⦿  ⦿  ⦿  ⦿  ⦿  ⦿"); defaults.set("mAtLevel", "&3⦿  ⦿  ⦿  ⦿  ⦿  ⦿");
+	defaults.set("atLevel",  "&2⦿  ⦿  ⦿  ⦿  ⦿  ⦿");
 	defaults.set("callUp",   "&3▲  ▲  ▲  ▲  ▲  ▲"); defaults.set("up",       "&4△  △  △  △  △  △");
 	defaults.set("callDown", "&3▼  ▼  ▼  ▼  ▼  ▼"); defaults.set("down",     "&4▽  ▽  ▽  ▽  ▽  ▽");
 	defaults.set("floorMaxRadius", 8); defaults.set("updateDelay", 50); defaults.set("doorHoldTime", 4000);
@@ -75,11 +77,11 @@ public static void initDefaults(Main _plugin) {
 
 //------------------- Config Save & Load Functions -------------------
 
-public static void saveConf(boolean f) {
+static void saveConf(boolean f) {
 	if(SVTMR != null) SVTMR.cancel();
 	if(f) synchronized(API_SYNC) { doSaveConf(); }
 	else SVTMR = plugin.setTimeout(Conf::doSaveConf, 200);
-} public static void saveConf() { saveConf(false); }
+} static void saveConf() { saveConf(false); }
 
 private static void doSaveConf() {
 	SVTMR=null; File f=new File(CONFIG_PATH); String data;
@@ -127,35 +129,34 @@ private static String newConf(File file) {
 	return unpackFile("config.yml", file);
 }
 
-public static Object loadConf() { try {
+static Object loadConf() { try {
 	File f=new File(CONFIG_PATH); YamlConfiguration conf; boolean pf=f.exists();
 	if(pf) conf=YamlConfiguration.loadConfiguration(f); else conf=new YamlConfiguration();
 	conf.setDefaults(defaults); movingFloors=new ChuList<>(); CLTMR=null;
 
 	//Load Global Settings:
 	DEBUG=conf.getBoolean("debug");
-	TITLE=c(conf.getString("title"));
-	CALL=c(conf.getString("call"));
-	ERROR=c(conf.getString("error"));
-	L_ST=c(conf.getString("selStart"));
-	L_END=c(conf.getString("selEnd"));
-	NODOOR=c(conf.getString("noDoor"));
+	TITLE=conf.getString("title");
+	CALL=conf.getString("call");
+	ERROR=conf.getString("error");
+	L_ST=conf.getString("selStart");
+	L_END=conf.getString("selEnd");
+	NODOOR=conf.getString("noDoor");
 
 	MSG_GOTO_ST=c(conf.getString("msgGotoStart"));
 	MSG_GOTO_END=c(conf.getString("msgGotoEnd"));
 	MSG_CALL=c(conf.getString("msgCall"));
+	MSG_NOT_FOUND=c(conf.getString("msgNotFound"));
+	MSG_PERM=c(conf.getString("msgPerm"));
+	MSG_PERM_END=c(conf.getString("msgPermEnd"));
 
-	MSG_GOTO_ST=c(conf.getString("msgGotoStart"));
-	MSG_GOTO_END=c(conf.getString("msgGotoEnd"));
-	MSG_CALL=c(conf.getString("msgCall"));
-
-	NOMV=c(StringEscapeUtils.unescapeJava(conf.getString("noMove")));
-	M_ATLV=c(StringEscapeUtils.unescapeJava(conf.getString("mAtLevel")));
-	ATLV=c(StringEscapeUtils.unescapeJava(conf.getString("atLevel")));
-	C_UP=c(StringEscapeUtils.unescapeJava(conf.getString("callUp")));
-	UP=c(StringEscapeUtils.unescapeJava(conf.getString("up")));
-	C_DOWN=c(StringEscapeUtils.unescapeJava(conf.getString("callDown")));
-	DOWN=c(StringEscapeUtils.unescapeJava(conf.getString("down")));
+	NOMV=StringEscapeUtils.unescapeJava(conf.getString("noMove"));
+	M_ATLV=StringEscapeUtils.unescapeJava(conf.getString("mAtLevel"));
+	ATLV=StringEscapeUtils.unescapeJava(conf.getString("atLevel"));
+	C_UP=StringEscapeUtils.unescapeJava(conf.getString("callUp"));
+	UP=StringEscapeUtils.unescapeJava(conf.getString("up"));
+	C_DOWN=StringEscapeUtils.unescapeJava(conf.getString("callDown"));
+	DOWN=StringEscapeUtils.unescapeJava(conf.getString("down"));
 
 	RADIUS_MAX=conf.getInt("floorMaxRadius");
 	MOVE_RES=conf.getInt("updateDelay");
@@ -183,7 +184,7 @@ public static Object loadConf() { try {
 	return pf?eCnt:"NOCONF";
 } catch(Exception e) { err("loadConfig", e.getMessage()); return e.getMessage(); }}
 
-public static void doConfLoad(CommandSender s) {
+static void doConfLoad(CommandSender s) {
 	Object err=loadConf();
 	if(err=="NOCONF") doSaveConf(); //Create New Config.
 	else if(err instanceof Integer) { //Loaded Config Successfully.
@@ -207,12 +208,12 @@ private static Material getMat(String m) throws Exception {
 	catch(IllegalArgumentException e) { throw new Exception("No such material "+m); }
 }
 
-public static String locToString(Location l) {
+static String locToString(Location l) {
 	return l.getWorld().getName()+"-"+l.getBlockX()+"-"+l.getBlockZ();
 }
 
 //Open/close doors & gates:
-public static void setDoor(Block b, boolean on) {
+static void setDoor(Block b, boolean on) {
 	if(b.getBlockData() instanceof Openable) {
 		Openable d = (Openable)b.getBlockData();
 		if(d instanceof Door && ((Door)d).getHalf() != Bisected.Half.BOTTOM) return;
@@ -232,50 +233,40 @@ private static void playDoorSound(Block b, boolean on) {
 	l.getWorld().playSound(l,s,1,1);
 }
 
-//Set state of levers:
-public static void setPowered(Block b, boolean on) {
+//Set state of levers
+static void setPowered(Block b, boolean on) {
 	if(b.getBlockData() instanceof Switch) {
 		Switch s = (Switch)b.getBlockData(); s.setPowered(on); b.setBlockData(s);
 	}
 }
 
-//Write lines to sign:
-public static void setSign(Block sign, String[] lines) {
-	Sign s = ((Sign)sign.getState());
-	s.setLine(0, lines[0]==null?TITLE:lines[0]); s.setLine(1, lines[1]==null?"":lines[1]);
-	s.setLine(2, lines[2]==null?"":lines[2]); s.setLine(3, lines[3]==null?"":lines[3]);
-	s.update();
-} public static void setSign(Block sign, String lineOne) {
-	Sign s = ((Sign)sign.getState());
-	s.setLine(0, lineOne==null?TITLE:lineOne); s.setLine(1, "");
-	s.setLine(2, ""); s.setLine(3, ""); s.update();
+//Sign Read/Write
+static void line(Block b, int i, String str) {
+	Sign s=(Sign)b.getState(); s.line(i,sc(str==null?"":str)); s.update();
+}
+static String line(Block b, int i) { return cs(((Sign)b.getState()).line(i)); }
+static String[] lines(Block b) {
+	List<Component> c=((Sign)b.getState()).lines();
+	return new String[]{cs(c.get(0)),cs(c.get(1)),cs(c.get(2)),cs(c.get(3))};
+}
+static void lines(Block b, String[] l) {
+	Sign s=(Sign)b.getState(); s.line(0,sc(l[0])); s.line(1,sc(l[1]));
+	s.line(2,sc(l[2])); s.line(3,sc(l[3])); s.update();
 }
 
-public static void setLine(Block sign, int l, String str) {
-	Sign s=((Sign)sign.getState()); s.setLine(l, str==null?"":str); s.update();
-}
-
-//Read lines from sign:
-public static String[] lines(Block sign) {
-	return ((Sign)sign.getState()).getLines();
-}
-
-//Get block sign is attached to:
-public static Block getSignBlock(Block s) {
+//Get block sign is attached to
+static Block getSignBlock(Block s) {
 	World w=s.getWorld(); int x=s.getX(), y=s.getY(), z=s.getZ();
 	BlockFace f=((WallSign)s.getBlockData()).getFacing();
 	switch(f) {
 		case NORTH: return w.getBlockAt(x,y,z+1); case SOUTH: return w.getBlockAt(x,y,z-1);
-		case WEST: return w.getBlockAt(x+1,y,z); case EAST: return w.getBlockAt(x-1,y,z);
-		default: return null;
+		case WEST: return w.getBlockAt(x+1,y,z); default: return w.getBlockAt(x-1,y,z);
 	}
 }
 
-//Ensure there is a solid block behind the sign.
-public static void addSignBlock(Block s) {
-	Block b=Conf.getSignBlock(s); setDoorBlock(b,true);
-}
-public static void setDoorBlock(Block b, boolean on) {
+//Ensure there is a solid block behind the sign
+static void addSignBlock(Block s) { setDoorBlock(Conf.getSignBlock(s),true); }
+static void setDoorBlock(Block b, boolean on) {
 	Material m=b.getType();
 	if(on?!m.isSolid():m==Conf.DOOR_SET) b.setType(on?Conf.DOOR_SET:Conf.AIR);
 	if(on && b.getBlockData() instanceof MultipleFacing) { //Connect block faces
@@ -289,33 +280,36 @@ public static void setDoorBlock(Block b, boolean on) {
 }
 
 //Determine if sign or call sign was clicked on:
-public static boolean isElevSign(Block b, ConfData ref, Player pl, String perm) {
-	if(!hasPerm(pl, perm)) return false; if(b.getBlockData() instanceof WallSign && TITLE.equals
-			(lines(b)[0])) { ref.data = Elevator.fromElevSign(b); return (ref.data!=null); } return false;
+static boolean isElevSign(Block b, ConfData ref, Player p) {
+	if(!hasPerm(p,Main.PERM_USE,true)) return false; if(b.getBlockData() instanceof WallSign && TITLE.equals(line(b,0))) {
+		ref.data=Elevator.fromElevSign(b); if(ref.data==null) p.sendMessage(MSG_NOT_FOUND); return (ref.data!=null);
+	} return false;
 }
 
-public static boolean isCallSign(Block b, ConfData ref, Player pl, String perm) {
-	if(!hasPerm(pl, perm)) return false; if(b.getBlockData() instanceof WallSign && CALL.equals
-			(lines(b)[0])) { ref.data = Elevator.fromCallSign(b); return (ref.data!=null); } return false;
+static boolean isCallSign(Block b, ConfData ref, Player p) {
+	if(!hasPerm(p,Main.PERM_USE,true)) return false; if(b.getBlockData() instanceof WallSign && CALL.equals(line(b,0))) {
+		ref.data=Elevator.fromCallSign(b); if(ref.data==null) p.sendMessage(MSG_NOT_FOUND); return (ref.data!=null);
+	} return false;
 }
 
-public static boolean isElevPlayer(Player pl, ConfData ref, String perm) {
-	if(!hasPerm(pl, perm)) return false; ref.data=Elevator.fromEntity(pl); return (ref.data!=null);
+static boolean isElevPlayer(Player p, ConfData ref) {
+	if(!hasPerm(p,Main.PERM_USE,false)) return false; ref.data=Elevator.fromEntity(p); return (ref.data!=null);
 }
 
 //Find first null element in a RaichuList:
-public static int findFirstEmpty(ChuList<ChuList<FallingBlock>> list) {
+static int findFirstEmpty(ChuList<ChuList<FallingBlock>> list) {
 	int l=list.length; for(int i=0; i<l; i++) if(list.get(i)==null) return i; return l;
 }
 
-//Check if player has permission:
-public static boolean hasPerm(Player pl, String perm) {
-	return pl.hasPermission(perm);
+//-------------------  PecacheuLib Functions -------------------
+
+static boolean hasPerm(Player p, String perm, boolean m) {
+	boolean h=p.hasPermission(perm);
+	if(m && !h) p.sendMessage(MSG_PERM+perm+MSG_PERM_END); return h;
 }
 
-//Unpack a file internal to the JAR.
-public static String unpackFile(String intPath, File dest) {
-	InputStream st = plugin.getResource(intPath);
+static String unpackFile(String intPath, File dest) {
+	InputStream st=plugin.getResource(intPath);
 	String s; try {
 		StringBuilder d=new StringBuilder(); int p=0,r;
 		while(p < 3000) { r=st.read(); if(r<0) break; d.append((char)r); p++; }
@@ -326,38 +320,23 @@ public static String unpackFile(String intPath, File dest) {
 	return s;
 }
 
-//Emulate JavaScript's fromCharCode Function:
-public static String fromCharCode(int... codePoints) {
-	return new String(codePoints, 0, codePoints.length);
-}
-
-public static void dbg(String str) {
+static String cs(Component c) { return LegacyComponentSerializer.legacyAmpersand().serialize(c); }
+static Component sc(String s) { return LegacyComponentSerializer.legacyAmpersand().deserialize(s); }
+static String c(String s) { return LegacyComponentSerializer.legacySection().serialize(sc(s)); }
+static void dbg(String str) {
 	if(DEBUG) {
-		String msg = MSG_DBG+str; Bukkit.getConsoleSender().sendMessage(msg);
-		Collection<? extends Player> pl = Bukkit.getOnlinePlayers();
-		for(Player p: pl) if(hasPerm(p, Main.PERM_RELOAD)) p.sendMessage(msg);
+		String msg=MSG_DBG+str; Bukkit.getConsoleSender().sendMessage(msg);
+		Collection<? extends Player> pl=Bukkit.getOnlinePlayers();
+		for(Player p: pl) if(hasPerm(p,Main.PERM_RELOAD,false)) p.sendMessage(msg);
 	}
 }
-
-public static void err(String func, String cause) {
+static void err(String func, String cause) {
 	if(DEBUG) {
-		String msg = MSG_ERR_ST+func+MSG_ERR_MID+cause; Bukkit.getConsoleSender().sendMessage(msg);
-		Collection<? extends Player> pl = Bukkit.getOnlinePlayers();
-		for(Player p: pl) if(hasPerm(p, Main.PERM_RELOAD)) p.sendMessage(msg);
+		String msg=MSG_ERR_ST+func+MSG_ERR_MID+cause; Bukkit.getConsoleSender().sendMessage(msg);
+		Collection<? extends Player> pl=Bukkit.getOnlinePlayers();
+		for(Player p: pl) if(hasPerm(p,Main.PERM_RELOAD,false)) p.sendMessage(msg);
 	}
 }
-
-//-------------------  PecacheuLib Functions -------------------
-
-public static String c(String str) {
-	if(str == null) return null;
-	String[] clr = str.split("&"); StringBuilder c = new StringBuilder(clr[0]);
-	for(int i=1,l=clr.length; i<l; i++) c.append(org.bukkit.ChatColor
-			.getByChar(clr[i].charAt(0))).append(clr[i].substring(1));
-	return c.toString();
-}
 }
 
-class ConfData {
-public Object data = null;
-}
+class ConfData { public Object data=null; }
