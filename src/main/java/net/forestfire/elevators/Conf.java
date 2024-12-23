@@ -17,7 +17,7 @@ import java.util.TreeMap;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -30,6 +30,8 @@ import org.bukkit.block.data.Bisected;
 import org.bukkit.block.data.MultipleFacing;
 import org.bukkit.block.data.Openable;
 import org.bukkit.block.data.type.*;
+import org.bukkit.block.sign.Side;
+import org.bukkit.block.sign.SignSide;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.MemoryConfiguration;
@@ -47,32 +49,49 @@ public static final Object API_SYNC=new Object();
 private static BukkitTask SVTMR=null;
 
 //Global Config Settings:
-public static String TITLE, CALL, ERROR, L_ST, L_END, NODOOR, MSG_GOTO_ST, MSG_GOTO_END, MSG_CALL, MSG_NOT_FOUND,
-MSG_PERM, MSG_PERM_END, NOMV, M_ATLV, ATLV, C_UP, UP, C_DOWN, DOWN; public static int RADIUS_MAX, MOVE_RES, DOOR_HOLD;
-public static ChuList<String> BLOCKS; public static ChuList<Integer> BL_SPEED; public static Material DOOR_SET;
+public static String TITLE, CALL, ERROR, L_ST, L_END, NODOOR, MSG_GOTO_ST, MSG_GOTO_END,
+	MSG_CALL, MSG_NOT_FOUND, MSG_PERM, MSG_PERM_END, NOMV, M_ATLV, ATLV, C_UP, UP, C_DOWN, DOWN;
+public static int RADIUS_MAX, MOVE_RES, DOOR_HOLD;
+public static ChuList<String> BLOCKS;
+public static ChuList<Integer> BL_SPEED;
+public static Material DOOR_SET;
 public static boolean DEBUG=false;
 
 //Constants:
 public static final String MSG_NEW_CONF="§e[Elevators] §bCould not load config. Creating new config file...",
-MSG_ERR_CONF="§e[Elevators] §cError while loading config!", MSG_DBG="§e[Elevators] §r",
-MSG_ERR_ST="§e[Elevators] §eError in §b", MSG_ERR_MID="§e: §c", MSG_DEL_ST="§e[Elevators] §b",
-MSG_DEL_END=" §esaved elevators were deleted because they were invalid!", CONFIG_PATH="plugins/Elevators/config.yml";
+	MSG_ERR_CONF="§e[Elevators] §cError while loading config!", MSG_DBG="§e[Elevators] §r",
+	MSG_ERR_ST="§e[Elevators] §eError in §b", MSG_ERR_MID="§e: §c", MSG_DEL_ST="§e[Elevators] §b",
+	MSG_DEL_END=" §esaved elevators were deleted because they are invalid!",
+	CONFIG_PATH="plugins/Elevators/config.yml";
 static final Material AIR = Material.AIR;
 
 static MemoryConfiguration defaults = new MemoryConfiguration();
 static void initDefaults(Main _plugin) {
 	defaults.set("debug", false);
-	defaults.set("title", "&1[&3Elevator&1]"); defaults.set("call", "&1[&3Call&1]"); defaults.set("error", "[&4???&r]");
-	defaults.set("selStart", "&8> &5"); defaults.set("selEnd", " &8<"); defaults.set("noDoor", "&1[nodoor]");
-	defaults.set("msgGotoStart", "&eTraveling to &a"); defaults.set("msgGotoEnd", "&e.");
-	defaults.set("msgCall", "&eCalling elevator."); defaults.set("msgNotFound", "&cElevator not found! Try recreating it.");
-	defaults.set("msgPerm", "&cSorry, you need the &e"); defaults.set("msgPermEnd", " &cpermission!");
-	defaults.set("noMove",   "&4⦿  ⦿  ⦿  ⦿  ⦿  ⦿"); defaults.set("mAtLevel", "&3⦿  ⦿  ⦿  ⦿  ⦿  ⦿");
+	defaults.set("title", "&1[&3Elevator&1]");
+	defaults.set("call", "&1[&3Call&1]");
+	defaults.set("error", "[&4???&r]");
+	defaults.set("selStart", "&8> &5");
+	defaults.set("selEnd", " &8<");
+	defaults.set("noDoor", "&1[nodoor]");
+	defaults.set("msgGotoStart", "&eTraveling to &a");
+	defaults.set("msgGotoEnd", "&e.");
+	defaults.set("msgCall", "&eCalling elevator.");
+	defaults.set("msgNotFound", "&cElevator not found! Try recreating it.");
+	defaults.set("msgPerm", "&cSorry, you need the &e");
+	defaults.set("msgPermEnd", " &cpermission!");
+	defaults.set("noMove",   "&4⦿  ⦿  ⦿  ⦿  ⦿  ⦿");
+	defaults.set("mAtLevel", "&3⦿  ⦿  ⦿  ⦿  ⦿  ⦿");
 	defaults.set("atLevel",  "&2⦿  ⦿  ⦿  ⦿  ⦿  ⦿");
-	defaults.set("callUp",   "&3▲  ▲  ▲  ▲  ▲  ▲"); defaults.set("up",       "&4△  △  △  △  △  △");
-	defaults.set("callDown", "&3▼  ▼  ▼  ▼  ▼  ▼"); defaults.set("down",     "&4▽  ▽  ▽  ▽  ▽  ▽");
-	defaults.set("floorMaxRadius", 8); defaults.set("updateDelay", 50); defaults.set("doorHoldTime", 4000);
-	defaults.set("doorBlock", "GLASS_PANE"); plugin = _plugin;
+	defaults.set("callUp",   "&3▲  ▲  ▲  ▲  ▲  ▲");
+	defaults.set("up",       "&4△  △  △  △  △  △");
+	defaults.set("callDown", "&3▼  ▼  ▼  ▼  ▼  ▼");
+	defaults.set("down",     "&4▽  ▽  ▽  ▽  ▽  ▽");
+	defaults.set("floorMaxRadius", 8);
+	defaults.set("updateDelay", 50);
+	defaults.set("doorHoldTime", 4000);
+	defaults.set("doorBlock", "GLASS_PANE");
+	plugin = _plugin;
 }
 
 //------------------- Config Save & Load Functions -------------------
@@ -93,7 +112,7 @@ private static void doSaveConf() {
 		r.close(); data=d.toString();
 	} catch(IOException e) { err("saveConfig", "IOException while reading file!"); return; }
 
-	if(data.length() == 0) { err("saveConfig", "Save data string empty!"); return; }
+	if(data.isEmpty()) { err("saveConfig", "Save data string empty!"); return; }
 
 	//Separate And Overwrite BLOCKS Section:
 	int bPos=data.lastIndexOf("blockList:"),bEnd=0,nl=0;
@@ -105,7 +124,8 @@ private static void doSaveConf() {
 	}
 	bEnd+=bPos;
 
-	YamlConfiguration bConf = new YamlConfiguration(); ConfigurationSection bList = bConf.createSection("blockList");
+	YamlConfiguration bConf = new YamlConfiguration();
+	ConfigurationSection bList = bConf.createSection("blockList");
 	for(int i=0,l=BLOCKS.length; i<l; i++) bList.set(BLOCKS.get(i), BL_SPEED.get(i));
 	data = data.substring(0,bPos)+bConf.saveToString()+data.substring(bEnd);
 
@@ -125,7 +145,10 @@ private static void doSaveConf() {
 private static String newConf(File file) {
 	Bukkit.getServer().getConsoleSender().sendMessage(MSG_NEW_CONF);
 	try { java.nio.file.Files.createDirectories(file.toPath().getParent()); }
-	catch(IOException e) { err("newConfig", "IOException while creating directories!"); return ""; }
+	catch(IOException e) {
+		err("newConfig", "IOException while creating directories!");
+		return "";
+	}
 	return unpackFile("config.yml", file);
 }
 
@@ -235,23 +258,27 @@ private static void playDoorSound(Block b, boolean on) {
 
 //Set state of levers
 static void setPowered(Block b, boolean on) {
-	if(b.getBlockData() instanceof Switch) {
-		Switch s = (Switch)b.getBlockData(); s.setPowered(on); b.setBlockData(s);
-	}
+	if(b.getBlockData() instanceof Switch s) { s.setPowered(on); b.setBlockData(s); }
 }
 
 //Sign Read/Write
 static void line(Block b, int i, String str) {
-	Sign s=(Sign)b.getState(); s.line(i,sc(str==null?"":str)); s.update();
+	Sign s=(Sign)b.getState();
+	s.getSide(Side.FRONT).line(i,sc(str==null?"":str));
+	s.update();
 }
-static String line(Block b, int i) { return cs(((Sign)b.getState()).line(i)); }
+static String line(Block b, int i) {
+	return cs(((Sign)b.getState()).getSide(Side.FRONT).line(i));
+}
 static String[] lines(Block b) {
-	List<Component> c=((Sign)b.getState()).lines();
+	List<Component> c=((Sign)b.getState()).getSide(Side.FRONT).lines();
 	return new String[]{cs(c.get(0)),cs(c.get(1)),cs(c.get(2)),cs(c.get(3))};
 }
 static void lines(Block b, String[] l) {
-	Sign s=(Sign)b.getState(); s.line(0,sc(l[0])); s.line(1,sc(l[1]));
-	s.line(2,sc(l[2])); s.line(3,sc(l[3])); s.update();
+	Sign s=(Sign)b.getState(); SignSide ss=s.getSide(Side.FRONT);
+	ss.line(0,sc(l[0])); ss.line(1,sc(l[1]));
+	ss.line(2,sc(l[2])); ss.line(3,sc(l[3]));
+	s.update();
 }
 
 //Get block sign is attached to
@@ -269,8 +296,8 @@ static void addSignBlock(Block s) { setDoorBlock(Conf.getSignBlock(s),true); }
 static void setDoorBlock(Block b, boolean on) {
 	Material m=b.getType();
 	if(on?!m.isSolid():m==Conf.DOOR_SET) b.setType(on?Conf.DOOR_SET:Conf.AIR);
-	if(on && b.getBlockData() instanceof MultipleFacing) { //Connect block faces
-		MultipleFacing f=(MultipleFacing)b.getBlockData(); Location l=b.getLocation();
+	if(on && b.getBlockData() instanceof MultipleFacing f) { //Connect block faces
+		Location l=b.getLocation();
 		f.setFace(BlockFace.EAST, !l.clone().add(1,0,0).getBlock().isPassable());
 		f.setFace(BlockFace.WEST, !l.clone().add(-1,0,0).getBlock().isPassable());
 		f.setFace(BlockFace.NORTH, !l.clone().add(0,0,-1).getBlock().isPassable());
