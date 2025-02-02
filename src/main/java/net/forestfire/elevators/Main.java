@@ -40,7 +40,7 @@ public static Elevator LAST_ELEV;
 @Override
 public void onEnable() {
 	Conf.initDefaults(this);
-	setTimeout(() -> Conf.doConfLoad(null), 200);
+	Conf.doConfLoad(null);
 	getServer().getPluginManager().registerEvents(this, this);
 	Bukkit.getConsoleSender().sendMessage(Conf.MSG_DBG+"§dElevators Plugin Loaded!");
 }
