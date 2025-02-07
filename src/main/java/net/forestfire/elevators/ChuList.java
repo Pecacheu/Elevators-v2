@@ -1,4 +1,4 @@
-//ChuList v1.9.1, ©2024 Pecacheu. Licensed under GNU GPL 3.0
+//ChuList v1.9.2, ©2024 Pecacheu. Licensed under GNU GPL 3.0
 //An actually properly implemented List class? With error checking!? Imagine that!
 
 package net.forestfire.elevators;
@@ -46,6 +46,12 @@ public E set(int index, E item) {
 	while(index >= super.size()) super.add(null);
 	E set = super.set(index, item);
 	length = super.size(); return set;
+}
+
+@Override
+public E getFirst() {
+	if(super.isEmpty()) return null;
+	return super.getFirst();
 }
 
 @Override

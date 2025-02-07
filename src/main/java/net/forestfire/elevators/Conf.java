@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 import java.util.TreeMap;
-
+import java.util.regex.Pattern;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.apache.commons.text.StringEscapeUtils;
@@ -22,13 +22,11 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
-import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.Sign;
-import org.bukkit.block.data.Bisected;
-import org.bukkit.block.data.MultipleFacing;
-import org.bukkit.block.data.Openable;
+import org.bukkit.block.data.*;
 import org.bukkit.block.data.type.*;
 import org.bukkit.block.sign.Side;
 import org.bukkit.block.sign.SignSide;
@@ -56,14 +54,16 @@ public static ChuList<String> BLOCKS;
 public static ChuList<Integer> BL_SPEED;
 public static Material DOOR_SET;
 public static boolean DEBUG=false;
+static int L_STL, L_ENDL;
 
 //Constants:
-public static final String MSG_NEW_CONF="§e[Elevators] §bCould not load config. Creating new config file...",
-	MSG_ERR_CONF="§e[Elevators] §cError while loading config!", MSG_DBG="§e[Elevators] §r",
-	MSG_ERR_ST="§e[Elevators] §eError in §b", MSG_ERR_MID="§e: §c", MSG_DEL_ST="§e[Elevators] §b",
-	MSG_DEL_END=" §esaved elevators were deleted because they are invalid!",
+public static final String MSG_NEW_CONF="&e[Elevators] &bCould not load config. Creating new config file...",
+	MSG_ERR_CONF="&e[Elevators] &cError while loading config!", MSG_DBG="&e[Elevators] &r",
+	MSG_ERR_ST="&e[Elevators] &eError in &b", MSG_ERR_MID="&e: &c", MSG_DEL_ST="&e[Elevators] &b",
+	MSG_DEL_END=" &esaved elevators were deleted because they are invalid!",
 	CONFIG_PATH="plugins/Elevators/config.yml";
 static final Material AIR = Material.AIR;
+static final Pattern R_CLR = Pattern.compile("&.");
 
 static MemoryConfiguration defaults = new MemoryConfiguration();
 static void initDefaults(Main _plugin) {
@@ -143,7 +143,7 @@ private static void doSaveConf() {
 }
 
 private static String newConf(File file) {
-	Bukkit.getServer().getConsoleSender().sendMessage(MSG_NEW_CONF);
+	msg(null,MSG_NEW_CONF);
 	try { java.nio.file.Files.createDirectories(file.toPath().getParent()); }
 	catch(IOException e) {
 		err("newConfig", "IOException while creating directories!");
@@ -163,15 +163,17 @@ static Object loadConf() { try {
 	CALL=conf.getString("call");
 	ERROR=conf.getString("error");
 	L_ST=conf.getString("selStart");
+	L_STL=Conf.rc(L_ST).length();
 	L_END=conf.getString("selEnd");
+	L_ENDL=Conf.rc(L_END).length();
 	NODOOR=conf.getString("noDoor");
 
-	MSG_GOTO_ST=c(conf.getString("msgGotoStart"));
-	MSG_GOTO_END=c(conf.getString("msgGotoEnd"));
-	MSG_CALL=c(conf.getString("msgCall"));
-	MSG_NOT_FOUND=c(conf.getString("msgNotFound"));
-	MSG_PERM=c(conf.getString("msgPerm"));
-	MSG_PERM_END=c(conf.getString("msgPermEnd"));
+	MSG_GOTO_ST=conf.getString("msgGotoStart");
+	MSG_GOTO_END=conf.getString("msgGotoEnd");
+	MSG_CALL=conf.getString("msgCall");
+	MSG_NOT_FOUND=conf.getString("msgNotFound");
+	MSG_PERM=conf.getString("msgPerm");
+	MSG_PERM_END=conf.getString("msgPermEnd");
 
 	NOMV=StringEscapeUtils.unescapeJava(conf.getString("noMove"));
 	M_ATLV=StringEscapeUtils.unescapeJava(conf.getString("mAtLevel"));
@@ -212,16 +214,16 @@ static void doConfLoad(CommandSender s) {
 	if(err=="NOCONF") doSaveConf(); //Create New Config.
 	else if(err instanceof Integer) { //Loaded Config Successfully.
 		if((Integer)err>0) {
-			String delMsg=MSG_DEL_ST + err + MSG_DEL_END;
-			Bukkit.getServer().getConsoleSender().sendMessage(delMsg);
-			if(s instanceof Player) s.sendMessage(delMsg);
+			String delMsg=MSG_DEL_ST+err+MSG_DEL_END;
+			msg(null,delMsg);
+			if(s instanceof Player) msg(s,delMsg);
 		}
 		doSaveConf();
 	} else if(err!=null) { //Error While Loading Config.
-		Bukkit.getServer().getConsoleSender().sendMessage(MSG_ERR_CONF + "\n" + err);
-		if(s instanceof Player) s.sendMessage(MSG_ERR_CONF);
+		msg(null,MSG_ERR_CONF+"\n"+err);
+		if(s instanceof Player) msg(s,MSG_ERR_CONF);
 	}
-	if(s!=null) s.sendMessage("§aElevators Plugin Reloaded!");
+	if(s!=null) msg(s,"&aElevators Plugin Reloaded!");
 }
 
 //-------------------  Useful Functions -------------------
@@ -237,9 +239,8 @@ static String locToString(Location l) {
 
 //Open/close doors & gates:
 static void setDoor(Block b, boolean on) {
-	if(b.getBlockData() instanceof Openable) {
-		Openable d = (Openable)b.getBlockData();
-		if(d instanceof Door && ((Door)d).getHalf() != Bisected.Half.BOTTOM) return;
+	if(b.getBlockData() instanceof Openable d) {
+        if(d instanceof Door && ((Door)d).getHalf() != Bisected.Half.BOTTOM) return;
 		d.setOpen(on); b.setBlockData(d); playDoorSound(b,on);
 	}
 }
@@ -258,7 +259,15 @@ private static void playDoorSound(Block b, boolean on) {
 
 //Set state of levers
 static void setPowered(Block b, boolean on) {
-	if(b.getBlockData() instanceof Switch s) { s.setPowered(on); b.setBlockData(s); }
+	if(b.getBlockData() instanceof Switch d) {
+		d.setPowered(on); b.setBlockData(d);
+		b.getState().update();
+		//Force update on attached (a bit hacky)
+		b=getAttached(b);
+		BlockState b1=b.getState(), b2=b.getState();
+		b1.setType(Material.REDSTONE_BLOCK);
+		b1.update(true); b2.update(true);
+	}
 }
 
 //Sign Read/Write
@@ -281,27 +290,28 @@ static void lines(Block b, String[] l) {
 	s.update();
 }
 
-//Get block sign is attached to
-static Block getSignBlock(Block s) {
-	World w=s.getWorld(); int x=s.getX(), y=s.getY(), z=s.getZ();
-	BlockFace f=((WallSign)s.getBlockData()).getFacing();
-	switch(f) {
-		case NORTH: return w.getBlockAt(x,y,z+1); case SOUTH: return w.getBlockAt(x,y,z-1);
-		case WEST: return w.getBlockAt(x+1,y,z); default: return w.getBlockAt(x-1,y,z);
-	}
+//Get attached block for sign/lever/etc
+static Block getAttached(Block b) {
+	BlockData d = b.getBlockData();
+	BlockFace f = ((Directional)d).getFacing().getOppositeFace();
+	if(d instanceof FaceAttachable a) f=switch(a.getAttachedFace()) {
+		case WALL -> f;
+		case FLOOR -> BlockFace.DOWN;
+		case CEILING -> BlockFace.UP;
+	};
+	return b.getRelative(f);
 }
 
 //Ensure there is a solid block behind the sign
-static void addSignBlock(Block s) { setDoorBlock(Conf.getSignBlock(s),true); }
+static void addSignBlock(Block s) { setDoorBlock(Conf.getAttached(s),true); }
 static void setDoorBlock(Block b, boolean on) {
 	Material m=b.getType();
 	if(on?!m.isSolid():m==Conf.DOOR_SET) b.setType(on?Conf.DOOR_SET:Conf.AIR);
 	if(on && b.getBlockData() instanceof MultipleFacing f) { //Connect block faces
-		Location l=b.getLocation();
-		f.setFace(BlockFace.EAST, !l.clone().add(1,0,0).getBlock().isPassable());
-		f.setFace(BlockFace.WEST, !l.clone().add(-1,0,0).getBlock().isPassable());
-		f.setFace(BlockFace.NORTH, !l.clone().add(0,0,-1).getBlock().isPassable());
-		f.setFace(BlockFace.SOUTH, !l.clone().add(0,0,1).getBlock().isPassable());
+		f.setFace(BlockFace.EAST, !b.getRelative(BlockFace.EAST).isPassable());
+		f.setFace(BlockFace.WEST, !b.getRelative(BlockFace.WEST).isPassable());
+		f.setFace(BlockFace.NORTH, !b.getRelative(BlockFace.NORTH).isPassable());
+		f.setFace(BlockFace.SOUTH, !b.getRelative(BlockFace.SOUTH).isPassable());
 		b.setBlockData(f);
 	}
 }
@@ -309,13 +319,13 @@ static void setDoorBlock(Block b, boolean on) {
 //Determine if sign or call sign was clicked on:
 static boolean isElevSign(Block b, ConfData ref, Player p) {
 	if(!hasPerm(p,Main.PERM_USE,true)) return false; if(b.getBlockData() instanceof WallSign && TITLE.equals(line(b,0))) {
-		ref.data=Elevator.fromElevSign(b); if(ref.data==null) p.sendMessage(MSG_NOT_FOUND); return (ref.data!=null);
+		ref.data=Elevator.fromElevSign(b); if(ref.data==null) msg(p,MSG_NOT_FOUND); return (ref.data!=null);
 	} return false;
 }
 
 static boolean isCallSign(Block b, ConfData ref, Player p) {
 	if(!hasPerm(p,Main.PERM_USE,true)) return false; if(b.getBlockData() instanceof WallSign && CALL.equals(line(b,0))) {
-		ref.data=Elevator.fromCallSign(b); if(ref.data==null) p.sendMessage(MSG_NOT_FOUND); return (ref.data!=null);
+		ref.data=Elevator.fromCallSign(b); if(ref.data==null) msg(p,MSG_NOT_FOUND); return (ref.data!=null);
 	} return false;
 }
 
@@ -332,7 +342,8 @@ static int findFirstEmpty(ChuList<ChuList<FallingBlock>> list) {
 
 static boolean hasPerm(Player p, String perm, boolean m) {
 	boolean h=p.hasPermission(perm);
-	if(m && !h) p.sendMessage(MSG_PERM+perm+MSG_PERM_END); return h;
+	if(m && !h) msg(p, MSG_PERM+perm+MSG_PERM_END);
+	return h;
 }
 
 static String unpackFile(String intPath, File dest) {
@@ -347,21 +358,23 @@ static String unpackFile(String intPath, File dest) {
 	return s;
 }
 
-static String cs(Component c) { return LegacyComponentSerializer.legacyAmpersand().serialize(c); }
-static Component sc(String s) { return LegacyComponentSerializer.legacyAmpersand().deserialize(s); }
-static String c(String s) { return LegacyComponentSerializer.legacySection().serialize(sc(s)); }
+static String cs(Component c) { return LegacyComponentSerializer.legacyAmpersand().serialize(c); } //Comp -> Str
+static Component sc(String s) { return LegacyComponentSerializer.legacyAmpersand().deserialize(s); } //Str -> Comp
+static String rc(String s) { return R_CLR.matcher(s).replaceAll(""); } //Strip Color
+
+static void msg(CommandSender cm, String s) { if(cm==null) cm=Bukkit.getConsoleSender(); cm.sendMessage(sc(s)); }
 static void dbg(String str) {
 	if(DEBUG) {
-		String msg=MSG_DBG+str; Bukkit.getConsoleSender().sendMessage(msg);
+		String m=MSG_DBG+str; msg(null,m);
 		Collection<? extends Player> pl=Bukkit.getOnlinePlayers();
-		for(Player p: pl) if(hasPerm(p,Main.PERM_RELOAD,false)) p.sendMessage(msg);
+		for(Player p: pl) if(hasPerm(p,Main.PERM_RELOAD,false)) msg(p,m);
 	}
 }
 static void err(String func, String cause) {
 	if(DEBUG) {
-		String msg=MSG_ERR_ST+func+MSG_ERR_MID+cause; Bukkit.getConsoleSender().sendMessage(msg);
+		String m=MSG_ERR_ST+func+MSG_ERR_MID+cause; msg(null,m);
 		Collection<? extends Player> pl=Bukkit.getOnlinePlayers();
-		for(Player p: pl) if(hasPerm(p,Main.PERM_RELOAD,false)) p.sendMessage(msg);
+		for(Player p: pl) if(hasPerm(p,Main.PERM_RELOAD,false)) msg(p,m);
 	}
 }
 }

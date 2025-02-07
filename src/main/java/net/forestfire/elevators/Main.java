@@ -3,8 +3,6 @@
 package net.forestfire.elevators;
 
 import net.kyori.adventure.text.Component;
-import org.bukkit.Bukkit;
-
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -30,7 +28,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
-
 import java.util.Collection;
 
 public class Main extends JavaPlugin implements Listener {
@@ -42,7 +39,7 @@ public void onEnable() {
 	Conf.initDefaults(this);
 	Conf.doConfLoad(null);
 	getServer().getPluginManager().registerEvents(this, this);
-	Bukkit.getConsoleSender().sendMessage(Conf.MSG_DBG+"§dElevators Plugin Loaded!");
+	Conf.msg(null, Conf.MSG_DBG+"&dElevators Plugin Loaded!");
 }
 @Override
 public void onDisable() {
@@ -54,21 +51,21 @@ public boolean onCommand(@NotNull CommandSender s, Command c, @NotNull String l,
 	if(c.getName().equalsIgnoreCase("elev")) {
 		if(a.length == 1 && a[0].equals("list")) {
 			Collection<Elevator> el = Conf.elevators.values();
-			s.sendMessage(el.size()+" Elevators:");
+			Conf.msg(s, el.size()+" Elevators:");
 			for(Elevator e: el) {
 				Floor f = e.floor;
 				Block b = e.sGroups.getFirst().getFirst();
-				s.sendMessage("Elevator in §d"+f.world.getName()+" §rat §b["+b.getX()
-					+","+b.getZ()+"]§r; Size: §b"+(f.xMax-f.xMin)+"x"+(f.zMax-f.zMin));
+				Conf.msg(s, "Elevator in &d"+f.world.getName()+" &rat &b["+b.getX()
+					+","+b.getZ()+"]&r; Size: &b"+(f.xMax-f.xMin+1)+"x"+(f.zMax-f.zMin+1));
 			}
 		} else if(a.length>0 && a[0].equals("reset")) {
 			if(LAST_ELEV != null) {
 				LAST_ELEV.resetElevator(a.length>1);
-				s.sendMessage("Last elevator reset.");
-			} else s.sendMessage("§cNo last elevator.");
+				Conf.msg(s, "Last elevator reset.");
+			} else Conf.msg(s, "&cNo last elevator.");
 		} else if(a.length == 1 && a[0].equals("reload")) {
 			setTimeout(() -> Conf.doConfLoad(s), 200);
-		} else s.sendMessage("§cUsage: /elev <list|reload|reset>");
+		} else Conf.msg(s, "&cUsage: /elev <list|reload|reset>");
 		return true;
 	}
 	return false;
@@ -154,7 +151,7 @@ public void onSignChange(SignChangeEvent e) { Block sign = e.getBlock();
 			}
 			String eID=Conf.locToString(new Location(f.world, f.xMin, 0, f.zMin));
 			elev=new Elevator(f, null, null); Conf.elevators.put(eID, (f.elev=elev));
-			sList=Elevator.rebuildSignList(sign); e.getPlayer().sendMessage("§eElevator created.");
+			sList=Elevator.rebuildSignList(sign); Conf.msg(e.getPlayer(), "&eElevator created.");
 		}
 
 		//Update Elevator Data
@@ -280,7 +277,7 @@ private void onDestroyElevSign(Cancellable e, Player p, Block b) {
 		ChuList<Block> cs = elev.csGroups.get(sInd);
 		if(cs != null) for(int h=0,d=cs.length; h<d; h++) cs.get(h).setType(Conf.AIR); //Delete call signs on level
 		if(sList.length <= 1) { //Delete elevator. This meeting... never happened
-			elev.selfDestruct(); p.sendMessage("§eElevator destroyed.");
+			elev.selfDestruct(); Conf.msg(p, "&eElevator destroyed.");
 		} else { sList.remove(sInd); elev.sGroups.set(ind, sList); } //Remove sign from elevator
 		int y=b.getY()-2; for(int x=f.xMin; x<=f.xMax; x++) for(int z=f.zMin; z<=f.zMax; z++)
 			f.world.getBlockAt(x,y,z).setType(Conf.AIR); //Remove floor
@@ -321,7 +318,8 @@ public void onPlayerInteract(PlayerInteractEvent e) { synchronized(Conf.API_SYNC
 			FList fl=elev.getFloors(); int sn=fl.sn;
 
 			//Increment Floor Number
-			if(e.getPlayer().isSneaking()) { if(--sn<0) sn=fl.fl.length-1; } else if(++sn >= fl.fl.length) sn=0;
+			if(e.getPlayer().isSneaking()) { if(--sn<0) sn=fl.fl.length-1; }
+			else if(++sn >= fl.fl.length) sn=0;
 			elev.updateFloorName(fl.fl.get(sn));
 
 			e.setCancelled(true);
@@ -332,7 +330,7 @@ public void onPlayerInteract(PlayerInteractEvent e) { synchronized(Conf.API_SYNC
 
 			//Call Elevator to Floor
 			if(from != to) {
-				e.getPlayer().sendMessage(Conf.MSG_CALL);
+				Conf.msg(e.getPlayer(), Conf.MSG_CALL);
 				elev.gotoFloor(from, to, false);
 			} else elev.doorTimer(to); //Re-open doors if already on level
 
