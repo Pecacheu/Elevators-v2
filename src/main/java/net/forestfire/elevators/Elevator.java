@@ -17,6 +17,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 public class Elevator {
+public final String id;
 public Floor floor;
 public ChuList<ChuList<Block>> sGroups;
 public ChuList<ChuList<Block>> csGroups;
@@ -25,14 +26,14 @@ public ChuList<String> csData;
 
 //-- Initialization Functions
 
-public Elevator(Floor _floor, ChuList<ChuList<Block>> _sGroups, ChuList<ChuList<Block>> _csGroups) {
-	floor=_floor; if(_sGroups==null) sGroups=new ChuList<>(); else sGroups=_sGroups;
+public Elevator(String _id, Floor _floor, ChuList<ChuList<Block>> _sGroups, ChuList<ChuList<Block>> _csGroups) {
+	id=_id; floor=_floor; if(_sGroups==null) sGroups=new ChuList<>(); else sGroups=_sGroups;
 	if(_csGroups==null) csGroups=new ChuList<>(); else csGroups=_csGroups;
 	csData = new ChuList<>();
 }
 
 //Data Format: [World, Signs1 X, Signs1 Z, Signs2 X, Signs2 Z...]
-public static Elevator fromSaveData(java.util.List<String> data) {
+public static Elevator fromSaveData(String id, java.util.List<String> data) {
 	if(data.size() < 3 || data.size() % 2 == 0) { Conf.err("fromSaveData", "Data length too small or not odd number."); return null; }
 	World w=Bukkit.getServer().getWorld(data.getFirst()); if(w==null) {
 		Conf.err("fromSaveData", "World '"+data.getFirst()+"' does not exist!"); return null;
@@ -45,7 +46,7 @@ public static Elevator fromSaveData(java.util.List<String> data) {
 		if(sList.length!=0) sGroups.add(sList);
 	}
 	if(sGroups.length==0) { Conf.err("fromSaveData", "No elevator signs found!"); return null; }
-	Elevator elev = new Elevator(null, sGroups, null); Block dSign = sGroups.getFirst().getFirst();
+	Elevator elev = new Elevator(id, null, sGroups, null); Block dSign = sGroups.getFirst().getFirst();
 	Floor f=Floor.getFloor(w.getBlockAt(dSign.getX(), elev.getLevel(true)+2, dSign.getZ()), elev);
 	if(f==null) { Conf.err("fromSaveData", "No elevator floor detected!"); return null; }
 	elev.floor=f; elev.rebuildCallSignList(null);
@@ -65,9 +66,11 @@ public ChuList<String> toSaveData() {
 
 //The names Bond. James Bond
 public void selfDestruct() {
-	if(floor != null && sGroups.length>0 && sGroups.getFirst().length>0) { resetElevator(true); setDoors(0,false); }
-	floor=null; for(ChuList<Block> c: csGroups) for(Block s: c) s.setType(Conf.AIR);
-	Conf.elevators.entrySet().remove(this);
+	if(floor != null && sGroups.length>0 && sGroups.getFirst().length>0) {
+		resetElevator(); setDoors(0,false);
+	}
+	for(ChuList<Block> c: csGroups) for(Block s: c) s.setType(Conf.AIR);
+	floor=null; Conf.elevators.remove(id);
 }
 
 public int yMin() { return sGroups.getFirst().getFirst().getY()-2; }
@@ -235,7 +238,7 @@ public void updateFloorName(String flName) {
 public FList getFloors() {
 	ChuList<Block> ds=sGroups.getFirst(); int n=0;
 	String s,sel=Conf.rc(Conf.line(ds.getFirst(),1));
-	sel=sel.substring(Conf.L_STL, sel.length()-Conf.L_ENDL);
+	if(!sel.isEmpty()) sel=sel.substring(Conf.L_STL, sel.length()-Conf.L_ENDL);
 	int i=0,l=ds.length; ChuList<String> fn=new ChuList<>(l);
 	for(; i<l; i++) {
 		fn.add(s=Conf.line(ds.get(i),3));

@@ -48,7 +48,7 @@ public void onDisable() {
 }
 @Override
 public boolean onCommand(@NotNull CommandSender s, Command c, @NotNull String l, String[] a) {
-	if(c.getName().equalsIgnoreCase("elev")) {
+	if(c.getName().equals("elev")) {
 		if(a.length == 1 && a[0].equals("list")) {
 			Collection<Elevator> el = Conf.elevators.values();
 			Conf.msg(s, el.size()+" Elevators:");
@@ -150,7 +150,8 @@ public void onSignChange(SignChangeEvent e) { Block sign = e.getBlock();
 				Conf.err("onSignChange:ElevSign:NewElev", "Floor not found!"); return;
 			}
 			String eID=Conf.locToString(new Location(f.world, f.xMin, 0, f.zMin));
-			elev=new Elevator(f, null, null); Conf.elevators.put(eID, (f.elev=elev));
+			elev=new Elevator(eID, f, null, null);
+			Conf.elevators.put(eID, (f.elev=elev));
 			sList=Elevator.rebuildSignList(sign); Conf.msg(e.getPlayer(), "&eElevator created.");
 		}
 

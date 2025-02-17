@@ -47,9 +47,9 @@ public static Floor getFloor(Block b, Elevator parent) {
 
 //Creates Floor or MovingFloor at height 'h'
 //If MovingFloor, returns new floorID
-//Deletes existing floor blocks unless 'dontDelete' is true
-public int addFloor(double h, boolean isMoving, boolean dontDelete, Integer forceID) {
-	if(!dontDelete) { removeFallingBlocks(); elev.resetElevator(true); }
+//Deletes existing floor blocks unless 'noDelete' is true
+public int addFloor(double h, boolean isMoving, boolean noDelete, Integer forceID) {
+	if(!noDelete) { removeFallingBlocks(); elev.resetElevator(true); }
 	if(isMoving) { //Create FallingBlock Floor
 		ChuList<FallingBlock> bl=new ChuList<>((xMax-xMin+1)*(zMax-zMin+1)); moving=true;
 		for(int x=xMin; x<=xMax; x++) for(int z=zMin; z<=zMax; z++) {
@@ -62,8 +62,8 @@ public int addFloor(double h, boolean isMoving, boolean dontDelete, Integer forc
 		for(int x=xMin; x<=xMax; x++) for(int z=zMin; z<=zMax; z++) world.getBlockAt(x,(int)h,z).setType(fType);
 	} return 0;
 }
-public int addFloor(double h, boolean isMoving, boolean dontDelete) {
-	return addFloor(h, isMoving, dontDelete, null);
+public int addFloor(double h, boolean isMoving, boolean noDelete) {
+	return addFloor(h, isMoving, noDelete, null);
 }
 
 //Moves a MovingFloor using floorID

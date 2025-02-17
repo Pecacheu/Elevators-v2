@@ -202,7 +202,7 @@ static Object loadConf() { try {
 	//Load Compressed Elevator Data:
 	elevators.clear(); ConfigurationSection eList=conf.getConfigurationSection("elevators");
 	int eCnt=0; if(eList!=null) for(String k: eList.getKeys(false)) {
-		Elevator e=Elevator.fromSaveData(eList.getStringList(k));
+		Elevator e=Elevator.fromSaveData(k, eList.getStringList(k));
 		if(e!=null) elevators.put(k,e);
 		else { eCnt++; err("loadConfig", "fromSaveData returned null at ID "+k); }
 	}
